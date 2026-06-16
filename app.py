@@ -39,7 +39,7 @@ menu_selection = st.sidebar.radio(
     ]
 )
 
-# 🧠 RESTORED: Dynamic Fund Manager Wisdom Advice Box Section
+# Automated Sidebar Wisdom Carousel Module
 st.sidebar.markdown("---")
 st.sidebar.subheader("🧠 Fund Manager Wisdom")
 quotes = [
@@ -49,7 +49,6 @@ quotes = [
     "“Price follows earnings. If net profit margins expand, multi-year breakouts follow.”",
     "“Bypassing direct exchange paths prevents network tracking. Cache computing is security.”"
 ]
-# Selects a fresh advice fact automatically upon interaction
 st.sidebar.warning(random.choice(quotes))
 
 # Complete Operational Column Framework
@@ -61,7 +60,7 @@ ALL_METRICS_COLS = [
 ]
 
 # =========================================================================
-# CONTROLLER BRANCH ROUTING
+# CONTROLLER BRANCH ROUTING ENGINE
 # =========================================================================
 
 if menu_selection == "🔍 LIVE SCREENER CORE":
@@ -130,21 +129,43 @@ if menu_selection == "🔍 LIVE SCREENER CORE":
 elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
     st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT SCANNER")
     
+    # Core Macro Goals
+    col_mg1, col_mg2 = st.columns(2)
+    invest_horizon = col_mg1.number_input("Investment Term (Years)", min_value=0.5, max_value=15.0, value=2.0, step=0.5, key="moat_horizon")
+    expected_return = col_mg2.number_input("Target Expected Return (% p.a.)", min_value=10.0, max_value=150.0, value=50.0, step=5.0, key="moat_return")
+    
+    # 🚀 Fully Exposed Moat Parameter Controls Block
     col_m1, col_m2 = st.columns(2)
     min_gross_margin = col_m1.number_input("Brand Pricing Premium Power (Minimum Gross Margin %)", min_value=20.0, max_value=90.0, value=45.0)
     min_inventory_speed = col_m2.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", min_value=2.0, max_value=25.0, value=6.0)
+    
+    col_m3, col_m4 = st.columns(2)
+    min_sales = col_m3.number_input("Minimum Sales Growth (%)", min_value=0.0, max_value=100.0, value=15.0, key="moat_sales")
+    min_roe = col_m4.number_input("Minimum ROE (%)", min_value=0.0, max_value=100.0, value=20.0, key="moat_roe")
+    
+    col_m5, col_m6 = st.columns(2)
+    max_pe = col_m5.number_input("Maximum P/E Ratio (0 for Any)", min_value=0.0, max_value=300.0, value=40.0, key="moat_pe")
+    min_mcap = col_m6.number_input("Minimum Market Cap (Cr)", min_value=0.0, max_value=500000.0, value=1000.0, key="moat_mcap")
+
+    col_m7, col_m8 = st.columns(2)
+    min_promoter = col_m7.number_input("Minimum Promoter Holding (%)", min_value=0.0, max_value=100.0, value=40.0, key="moat_promoter")
+    min_ema200_dist = col_m8.number_input("Minimum 200 EMA Cushion Distance (%)", min_value=-50.0, max_value=100.0, value=1.0, key="moat_dist")
     
     if st.button("RUN 1000% MULTIBAGGER INSIGHT ENGINE"):
         status = st.empty()
         status.warning("Analyzing brand loyalty indices and structural multi-year breakout parameters...")
         
-        raw_results = run_massive_scan_engine(SCREENER_WATCHLIST * 10, invest_horizon=2.0, expected_return=50.0)
+        raw_results = run_massive_scan_engine(SCREENER_WATCHLIST * 10, invest_horizon, expected_return)
         moat_hits = []
         
         for res in raw_results:
             if not res: continue
-            if res["Gross Margin (%)"] >= min_gross_margin and res["Inventory Speed (x)"] >= min_inventory_speed:
-                if res["ROE (%)"] >= 20.0:
+            # Multi-layer filtration including brand quality vectors
+            if (res["Gross Margin (%)"] >= min_gross_margin and res["Inventory Speed (x)"] >= min_inventory_speed and
+                res["Sales Growth (%)"] >= min_sales and res["ROE (%)"] >= min_roe and 
+                res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe)):
+                
+                if float(res["Promoter (%)"]) >= min_promoter and float(res["EMA200 Dist (%)"].replace("%","")) >= min_ema200_dist:
                     moat_hits.append(res)
                     
         status.empty()
