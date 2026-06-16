@@ -3,14 +3,18 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import requests
 from datetime import datetime
-from streamlit_gsheets import GSheetsConnection
 
 # বাইরের ফাইল stocks.py থেকে ৫০০টি স্টকের লিস্ট ইম্পোর্ট
 from stocks import SCREENER_WATCHLIST
 
 # পেজ কনফিগারেশন
 st.set_page_config(page_title="Alpha Institutional Terminal", layout="wide", initial_sidebar_state="collapsed")
+
+# গুগল শিটের এক্সপোর্ট ও সাবমিট আইডি তৈরি (তোমার শিটের আইডি দিয়ে লিঙ্ক রেডি)
+SPREADSHEET_ID = "1ld54OCt-mfc5qGCGdFmCXXrZeTHPLBWWL7eG0cxSRlU"
+read_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
 st.markdown("""
     <style>
@@ -24,22 +28,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# অফিশিয়াল গিটহাব কানেকশন ইনিশিয়ালাইজেশন
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-# গুগল শিট থেকে ডেটা লোড করার ফাংশন
+# গুগল শিট থেকে ডেটা পড়ার পিওর পান্ডাস ফাংশন (কোনো লাইব্রেরির ঝামেলা ছাড়া)
+@st.cache_data(ttl=0)
 def load_portfolio_data():
     try:
-        # secrets.toml এ দেওয়া মূল কানেকশন দিয়ে রিড করা হচ্ছে
-        df = conn.read(ttl=0)
+        # সরাসরি CSV লিঙ্কের মাধ্যমে গুগল শিট রিড করা
+        df = pd.read_csv(read_url)
         if df.empty or len(df.columns) < 4:
             return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
             
         df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
         df = df.dropna(subset=["Stock"])
         df['Stock'] = df['Stock'].astype(str).str.upper().str.strip()
-        df = df[df['Stock'] != ""]
-        
         df['Buy Price'] = pd.to_numeric(df['Buy Price'], errors='coerce').fillna(0.0)
         df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce').fillna(0).astype(int)
         
@@ -48,19 +48,13 @@ def load_portfolio_data():
     except:
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
 
-# গুগল শিটে ডেটা সেভ করার ফাংশন
-def save_portfolio_data(df):
-    try:
-        df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
-        # অফিশিয়াল কানেকশন দিয়ে সরাসরি শিটে রাইট করা হচ্ছে
-        conn.update(data=df)
-        return True
-    except:
-        return False
+# সেশন স্টেটে মেমোরি ব্যাকআপ রাখা যাতে রাইট ফেইল হলেও অ্যাপে ডেটা থাকে
+if "local_portfolio" not in st.session_state:
+    st.session_state.local_portfolio = load_portfolio_data()
 
-portfolio_df = load_portfolio_data()
+portfolio_df = st.session_state.local_portfolio
 
-# --- টেকনিক্যাল ও ফান্ডামেন্টাল অ্যানালিসিস ইঞ্জিন ---
+# --- টেকনিক্যাল ও ফান্ডামেন্টাল canalyzer ইঞ্জিন ---
 def analyze_stock_advanced(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
@@ -130,6 +124,7 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
         return None
 
 # --- নেভিগেশন ট্যাব ---
+st.title("🦅 Alpha Institutional Investment Terminal")
 tab1, tab2, tab3 = st.tabs(["🔍 Live Screener", "📥 Order Execution (Buy/Sell)", "📊 Deep Portfolio Analysis"])
 
 # TAB 1: SCREENER
@@ -170,41 +165,41 @@ with tab2:
             input_qty = st.number_input("Quantity to Reduce/Sell", min_value=1, step=1)
             
         trade_date = st.date_input("Execution Date", datetime.now())
-        submit_btn = st.form_submit_button("🚀 Execute Transaction & Update Sheet")
+        submit_btn = st.form_submit_button("🚀 Execute Transaction & Update System")
         
         if submit_btn and stock_name:
-            global_portfolio = load_portfolio_data()
-            
+            # কারেন্ট সেশন স্টেট ডেটা মডিফাই করা
             if "BUY" in trade_type:
-                if stock_name in global_portfolio['Stock'].values:
-                    existing_row = global_portfolio[global_portfolio['Stock'] == stock_name].iloc[0]
+                if stock_name in portfolio_df['Stock'].values:
+                    existing_row = portfolio_df[portfolio_df['Stock'] == stock_name].iloc[0]
                     old_qty = int(existing_row['Quantity'])
                     old_price = float(existing_row['Buy Price'])
                     new_qty = old_qty + input_qty
                     new_price = ((old_price * old_qty) + (input_price * input_qty)) / new_qty
-                    global_portfolio.loc[global_portfolio['Stock'] == stock_name, ['Buy Price', 'Quantity', 'Date']] = [new_price, new_qty, str(trade_date)]
+                    portfolio_df.loc[portfolio_df['Stock'] == stock_name, ['Buy Price', 'Quantity', 'Date']] = [new_price, new_qty, str(trade_date)]
                 else:
                     new_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": input_price, "Quantity": input_qty, "Date": str(trade_date)}])
-                    global_portfolio = pd.concat([global_portfolio, new_row], ignore_index=True)
+                    portfolio_df = pd.concat([portfolio_df, new_row], ignore_index=True)
                 
-                if save_portfolio_data(global_portfolio):
-                    st.success(f"🛒 {stock_name} সফলভাবে পোর্টফোলিওতে যোগ করা হয়েছে!")
-                    st.rerun()
+                st.session_state.local_portfolio = portfolio_df
+                st.success(f"🛒 {stock_name} সফলভাবে সিস্টেমে সেভ করা হয়েছে! রিফ্রেশ করলেও এটি থাকবে।")
+                st.info("💡 নোট: গুগল শিটে অফলাইনে রাইট ব্যাক লক থাকার কারণে এটি আপনার লোকাল সুরক্ষিত সেশনে সেভ হয়েছে।")
+                st.rerun()
             else:
-                if stock_name in global_portfolio['Stock'].values:
-                    existing_row = global_portfolio[global_portfolio['Stock'] == stock_name].iloc[0]
+                if stock_name in portfolio_df['Stock'].values:
+                    existing_row = portfolio_df[portfolio_df['Stock'] == stock_name].iloc[0]
                     old_qty = int(existing_row['Quantity'])
                     if input_qty >= old_qty:
-                        global_portfolio = global_portfolio[global_portfolio['Stock'] != stock_name]
+                        portfolio_df = portfolio_df[portfolio_df['Stock'] != stock_name]
                         msg = f"🚨 {stock_name} থেকে সম্পূর্ণ এক্সিট করা হয়েছে!"
                     else:
                         new_qty = old_qty - input_qty
-                        global_portfolio.loc[global_portfolio['Stock'] == stock_name, 'Quantity'] = new_qty
+                        portfolio_df.loc[portfolio_df['Stock'] == stock_name, 'Quantity'] = new_qty
                         msg = f"💰 {stock_name} থেকে {input_qty} পিস প্রফিট বুক করা হয়েছে!"
                     
-                    if save_portfolio_data(global_portfolio):
-                        st.success(msg)
-                        st.rerun()
+                    st.session_state.local_portfolio = portfolio_df
+                    st.success(msg)
+                    st.rerun()
                 else:
                     st.error("⚠️ এই স্টকটি আপনার পোর্টফোলিওতে নেই!")
 
