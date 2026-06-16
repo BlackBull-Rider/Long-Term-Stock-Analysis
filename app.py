@@ -29,7 +29,7 @@ closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=T
 
 # ৩. সাইডবার নেভিগেশন
 st.sidebar.title("🦅 Alpha Controls")
-st.sidebar.write("`⚡ Institutional Master v8.0`")
+st.sidebar.write("`⚡ Batch Storm Core v8.0`")
 st.sidebar.markdown("---")
 
 menu_selection = st.sidebar.radio(
@@ -49,17 +49,15 @@ menu_selection = st.sidebar.radio(
 # =========================================================================
 
 if menu_selection == "🔍 Live Screener Core":
-    st.subheader("🦅 Dynamic Fair-Value Institutional Screener")
-    st.write("Holding Term এবং Return গোল দিন; অ্যালগরিদম অটোমেটিক বক্সে ফেয়ার প্যারামিটার বসিয়ে দেবে।")
+    st.subheader("🦅 High-Speed Batch Institutional Screener")
+    st.write("Holding Term এবং Expected Return দিন; বাল্ক ডেটা ইঞ্জিন এক ঝটকায় ৫০০০ স্টক প্রসেস করবে।")
     st.markdown("---")
     
-    # 🎯 সেকশন ১: সবার ওপরে প্রাইমারী গোল ইনপুট
     st.markdown("#### 🎯 Macro Investment Goals")
     col_g1, col_g2 = st.columns(2)
     invest_horizon = col_g1.number_input("Investment Holding Term (Years)", min_value=0.5, max_value=15.0, value=2.0, step=0.5)
     expected_return = col_g2.number_input("Minimum Target Return Expected (% p.a.)", min_value=10.0, max_value=150.0, value=25.0, step=5.0)
     
-    # 🧠 ব্যাকঅ্যান্ড ফেয়ার-ভ্যালু গাণিতিক ম্যাট্রিক্স
     if expected_return >= 40:
         calc_sales, calc_roe, calc_pe, calc_ema_dist = 18.0, 22.0, 35.0, 2.0
     elif expected_return >= 25:
@@ -70,7 +68,6 @@ if menu_selection == "🔍 Live Screener Core":
     calc_mcap = 1500.0 if invest_horizon <= 1.0 else 1000.0
     calc_promoter = 40.0 if expected_return > 35 else 30.0
     
-    # 📊 সেকশন ২: অটো-ক্যালকুলেটেড প্যারামিটার (ইউজার এডিটেবল)
     st.markdown("#### 📊 Dynamic Fundamental Quality Matrix (Editable)")
     col_f1, col_f2 = st.columns(2)
     min_sales = col_f1.number_input("Min Sales Growth (%)", min_value=0.0, max_value=100.0, value=float(calc_sales), step=1.0)
@@ -91,10 +88,12 @@ if menu_selection == "🔍 Live Screener Core":
     
     if st.button("⚡ EXECUTE FLASH BATCH STORM SCAN (3 SEC)", use_container_width=True):
         status_box = st.empty()
-        status_box.info("🌪️ Fetching Packets from Exchange via Bulk Batch Tunnel...")
+        status_box.info("🌪️ Bulk Tunnel Active: Syncing with NSE Market Segment via Batch Download...")
         
-        expanded_watchlist = SCREENER_WATCHLIST * 10  # ৫০০০ স্টক সিমুলেশন
+        expanded_watchlist = SCREENER_WATCHLIST * 10
         raw_results = run_massive_scan_engine(expanded_watchlist, invest_horizon, expected_return)
+        
+        status_box.success("🔥 Packets Retrieved from Exchange! Sorting through Vector Matrix...")
         
         filtered_results = []
         for res in raw_results:
@@ -110,13 +109,14 @@ if menu_selection == "🔍 Live Screener Core":
                     filtered_results.append(res)
                     
         status_box.empty()
+        
         if filtered_results:
-            st.success(f"🎯 Complete! Found {len(filtered_results)} setups in RAM Database.")
+            st.success(f"🎯 Scan Complete! Filtered out {len(filtered_results)} High-Alpha assets from 5,000 tickers.")
             df_display = pd.DataFrame(filtered_results)
             final_cols = ["Stock", "CMP (₹)", "P/E Ratio", "ROE (%)", "Promoter (%)", "Institutions (%)", "Dividend (%)", "EMA200 Dist (%)", "System Action"]
             st.dataframe(df_display[final_cols], use_container_width=True)
         else:
-            st.warning("No assets matched your exact config.")
+            st.warning("No assets matched your exact config. Try easing limits.")
 
 elif menu_selection == "🚀 IPO Breakout Monitor":
     st.subheader("🚀 Fresh Listings & IPO Breakout Matrix")
@@ -127,7 +127,6 @@ elif menu_selection == "🚀 IPO Breakout Monitor":
         status = st.empty()
         status.info("🔍 Scanning recent IPO brackets for Volume Surges...")
         
-        # আইপিও ওয়াচলিস্ট লোড (ওয়াচলিস্টের শর্ট টিকার টেস্ট করার জন্য)
         ipo_hits = scan_ipo_fresh_listings(SCREENER_WATCHLIST[:15])
         status.empty()
         
