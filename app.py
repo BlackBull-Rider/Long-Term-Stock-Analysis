@@ -1,6 +1,7 @@
 # app.py
 import streamlit as st
 import pandas as pd
+import random
 from datetime import datetime
 
 from stocks import SCREENER_WATCHLIST
@@ -37,6 +38,19 @@ menu_selection = st.sidebar.radio(
         "📊 RISK ASSESSMENT MODULE"
     ]
 )
+
+# 🧠 RESTORED: Dynamic Fund Manager Wisdom Advice Box Section
+st.sidebar.markdown("---")
+st.sidebar.subheader("🧠 Fund Manager Wisdom")
+quotes = [
+    "“FIIs and Promoters dictate the macro direction; retail volume just fills the gaps.”",
+    "“Fundamentals tell you WHAT to buy. Technicals tell you WHEN to buy.”",
+    "“Amateurs think about how much money they can make. Professionals think about how much they could lose.”",
+    "“Price follows earnings. If net profit margins expand, multi-year breakouts follow.”",
+    "“Bypassing direct exchange paths prevents network tracking. Cache computing is security.”"
+]
+# Selects a fresh advice fact automatically upon interaction
+st.sidebar.warning(random.choice(quotes))
 
 # Complete Operational Column Framework
 ALL_METRICS_COLS = [
@@ -177,16 +191,9 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
         if st.form_submit_button("ROUTE TRANSACTION TARGET TO SYSTEM") and stock_name:
             b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
             new_row = pd.DataFrame([{
-                "Stock": stock_name, 
-                "Buy Price": input_price, 
-                "Quantity": input_qty, 
-                "Buy Date": str(trade_date), 
-                "Buy Charges": b_charges, 
-                "Sell Price": 0.0, 
-                "Sell Date": "-", 
-                "Sell Charges": 0.0, 
-                "Realized P&L": 0.0, 
-                "Status": "ACTIVE"
+                "Stock": stock_name, "Buy Price": input_price, "Quantity": input_qty, 
+                "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, 
+                "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"
             }])
             st.session_state.portfolio_data_store = pd.concat([st.session_state.portfolio_data_store, new_row], ignore_index=True)
             st.success("Transaction Processed Successfully into Account Replica Layout!")
