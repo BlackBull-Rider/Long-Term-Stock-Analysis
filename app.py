@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import plotly.express as px
 
 # =========================================================================
 # 📝 আপনার পোর্টফোলিও / হোল্ডিং লিস্ট 
@@ -14,23 +15,19 @@ MY_HOLDINGS = {
 
 def track_advanced_portfolio(ticker, holding_info):
     try:
-        # ২ বছরের উইকলি ডেটা ফেচ
         stock = yf.Ticker(ticker)
         df = stock.history(period="2y", interval="1wk")
-        
-        if df.empty or len(df) < 50:
-            return None
+        if df.empty or len(df) < 50: return None
             
         current_price = df['Close'].iloc[-1]
         buy_price = holding_info["buy_price"]
         qty = holding_info["quantity"]
         
         current_return_p = ((current_price - buy_price) / buy_price) * 100
-        current_value = current_price * qty
         invested_value = buy_price * qty
+        current_value = current_price * qty
         pnl = current_value - invested_value
         
-        # পিওর পান্ডাস দিয়ে EMA ক্যালকুলেশন
         df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         df['20_Week_High'] = df['High'].shift(1).rolling(window=20).max()
@@ -39,70 +36,92 @@ def track_advanced_portfolio(ticker, holding_info):
         ema_50 = df['EMA_50'].iloc[-1]
         twenty_week_high = df['20_Week_High'].iloc[-1]
         
-        # পিওর টেকনিক্যাল প্রফিট বুকিং এবং এন্ট্রি লজিক
-        action = "📈 HOLD & RIDE"
-        qty_to_book = 0
-        qty_to_hold = qty
-        
-        # ১. যদি লং-টার্ম সাপোর্ট (50 EMA) ব্রেক হয় -> ফুল এক্সিট
-        if current_price < ema_50:
-            action = "🚨 EXIT ALL QTY"
-            qty_to_book = qty
-            qty_to_hold = 0
-            
-        # ২. যদি শর্ট-টার্ম মোমেন্টাম লাইন (20 EMA) ব্রেক হয় -> ৫০% প্রফিট বুক
-        elif current_price < ema_20:
-            action = "💰 BOOK 50% QTY"
-            qty_to_book = round(qty / 2)
-            qty_to_hold = qty - qty_to_book
-            
-        # ৩. যদি কারেন্ট প্রাইস ২০-উইক হাই ব্রেক করে ওপরে ওড়ে -> নতুন করে রি-ইনভেস্ট
-        elif current_price >= twenty_week_high:
-            action = "🔥 RE-INVEST"
-            qty_to_book = 0
-            qty_to_hold = qty
+        action = "🟢 HOLD & RIDE"
+        if current_price < ema_50: action = "🔴 EMERGENCY EXIT"
+        elif current_price < ema_20: action = "🟠 BOOK 50% QTY"
+        elif current_price >= twenty_week_high: action = "🔥 RE-INVEST"
 
         return {
             "Stock": ticker.replace(".NS", ""),
             "Qty": int(qty),
-            "Avg Buy": round(buy_price, 2),
-            "CMP": round(current_price, 2),
-            "Return": f"{round(current_return_p, 2)}%",
-            "P&L": round(pnl, 2),
+            "Avg Buy (₹)": round(buy_price, 2),
+            "CMP (₹)": round(current_price, 2),
+            "Invested Value (₹)": round(invested_value, 2),
+            "Current Value (₹)": round(current_value, 2),
+            "Return (%)": round(current_return_p, 2),
+            "P&L (₹)": round(pnl, 2),
             "System Action": action,
-            "Book Qty": int(qty_to_book),
-            "Hold Qty": int(qty_to_hold),
-            "20 EMA": round(ema_20, 2),
-            "50 EMA": round(ema_50, 2)
+            "Book Qty": int(qty / 2) if "BOOK 50%" in action else (int(qty) if "EXIT" in action else 0),
+            "Hold Qty": int(qty / 2) if "BOOK 50%" in action else (0 if "EXIT" in action else int(qty))
         }
-    except Exception as e:
+    except:
         return None
 
 # --- STREAMLIT UI ---
-st.set_page_config(page_title="Advanced Institutional System", layout="wide")
-st.title("🛡️ Institutional Technical Tracking & Execution Dashboard")
-st.subheader("Pure Technical Profit Booking | Anti-Emotion Execution")
+st.set_page_config(page_title="Institutional Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-if st.button("🔄 Scan & Track Portfolio Live"):
-    with st.spinner("লাইভ মার্কেট চার্ট এবং ইএমএ লাইন স্ক্যান করা হচ্ছে..."):
-        results = []
-        for ticker, info in MY_HOLDINGS.items():
-            data = track_advanced_portfolio(ticker, info)
-            if data:
-                results.append(data)
-                
-        if results:
-            final_df = pd.DataFrame(results)
-            total_pnl = final_df["P&L"].sum()
-            
-            st.write("---")
-            kpi1, kpi2 = st.columns(2)
-            kpi1.metric(label="Total Portfolio Live P&L", value=f"Rs. {total_pnl:,.2f}")
-            kpi2.metric(label="Total Tracked Assets", value=str(len(final_df)))
-            st.write("---")
-            
-            # ডেটা ডিসপ্লে স্টেবিলিটি নিশ্চিত করতে স্ট্যান্ডার্ড ডেটাফ্রেম ভিউ
-            st.dataframe(final_df, use_container_width=True)
-            st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড সফলভাবে আপডেট করা হয়েছে!")
-        else:
-            st.error("কোনো ডেটা পাওয়া যায়নি। অনুগ্রহ করে হোল্ডিং লিস্ট চেক করুন।")
+st.title("🛡️ Institutional Portfolio & Risk Dashboard")
+st.markdown("---")
+
+results = []
+for ticker, info in MY_HOLDINGS.items():
+    data = track_advanced_portfolio(ticker, info)
+    if data: results.append(data)
+
+if results:
+    final_df = pd.DataFrame(results)
+    
+    # ক্যালকুলেশনস
+    total_invested = final_df["Invested Value (₹)"].sum()
+    total_current = final_df["Current Value (₹)"].sum()
+    total_pnl = final_df["P&L (₹)"].sum()
+    total_return_p = (total_pnl / total_invested) * 100
+    
+    # ১. হাই-লেভেল ইনভেস্টর কার্ডস
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Invested", f"₹{total_invested:,.2f}")
+    m2.metric("Current Value", f"₹{total_current:,.2f}")
+    m3.metric("Net Profit / Loss", f"₹{total_pnl:,.2f}", f"{total_return_p:.2f}%")
+    m4.metric("Active Tracked Stocks", str(len(final_df)))
+    
+    st.markdown("---")
+    
+    # ২. গ্রাফিকাল চার্ট সেকশন (Plotly Charts)
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.subheader("📊 Portfolio Weight (কোথায় কত টাকা আছে)")
+        fig_pie = px.pie(final_df, values='Current Value (₹)', names='Stock', hole=0.4,
+                         color_discrete_sequence=px.colors.sequential.RdBu)
+        fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+        st.plotly_chart(fig_pie, use_container_width=True)
+        
+    with c2:
+        st.subheader("💰 Stock-wise Profit / Loss")
+        fig_bar = px.bar(final_df, x='Stock', y='P&L (₹)', text='P&L (₹)',
+                         color='P&L (₹)', color_continuous_scale='RdYlGn')
+        fig_bar.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+        st.plotly_chart(fig_bar, use_container_width=True)
+        
+    st.markdown("---")
+    
+    # ৩. মেইন লাইভ সিগন্যাল টেবিল
+    st.subheader("📋 Live Technical Execution Signals")
+    
+    # সিগন্যাল হাইলাইট করার রুল
+    def style_signals(df):
+        co = pd.DataFrame('', index=df.index, columns=df.columns)
+        for i, val in enumerate(df['System Action']):
+            if "🔴" in val: co.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #ff4d4d; color: white; font-weight: bold;'
+            elif "🟠" in val: co.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #ffa500; color: white; font-weight: bold;'
+            elif "🔥" in val: co.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #26a69a; color: white; font-weight: bold;'
+            else: co.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #2e7d32; color: white; font-weight: bold;'
+        return co
+
+    # ফাইনাল ক্লিন ডিসপ্লে টেবিল
+    display_cols = ["Stock", "Qty", "Avg Buy (₹)", "CMP (₹)", "Return (%)", "P&L (₹)", "System Action", "Book Qty", "Hold Qty"]
+    st.dataframe(final_df[display_cols].style.apply(style_signals, axis=None), use_container_width=True)
+    
+    st.success("ইনস্টিটিউশনাল অ্যালগরিদম সাকসেসফুলি রান করেছে। সমস্ত চার্ট এবং সিগন্যাল লাইভ।")
+else:
+    st.error("ডেটা ফেচ করা যায়নি।")
