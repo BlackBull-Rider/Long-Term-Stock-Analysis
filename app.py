@@ -4,20 +4,20 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
+# বাইরের ফাইল stocks.py থেকে ৫০০টি স্টকের লিস্টটি ইম্পোর্ট করা হচ্ছে
+from stocks import SCREENER_WATCHLIST
+
 # পেজ সেটআপ
 st.set_page_config(page_title="Alpha Institutional Hub", layout="wide")
 
-# মেমোরিতে পোর্টফোলিও ডেটা সেভ রাখার জন্য
 if "portfolio_db" not in st.session_state:
     st.session_state.portfolio_db = pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
 
-# --- ফাংশন: টেকনিক্যাল ও ফান্ডামেন্টাল অ্যানালিসিস ---
 def analyze_stock(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
         stock = yf.Ticker(ticker)
         
-        # ১. হিস্টোরিক্যাল উইকলি ডেটা (টেকনিক্যাল)
         df = stock.history(period="2y", interval="1wk")
         if df.empty or len(df) < 50: return None
         
@@ -30,16 +30,14 @@ def analyze_stock(ticker, buy_price=None, qty=None):
         ema_50 = df['EMA_50'].iloc[-1]
         twenty_w_high = df['20_W_High'].iloc[-1]
         
-        # ২. লাইভ ফান্ডামেন্টাল ডেটা ফেচিং
         info = stock.info
         pe_ratio = info.get("trailingPE", 0)
         roe = info.get("returnOnEquity", 0) * 100 if info.get("returnOnEquity") else 0
         sales_growth_3y = info.get("revenueGrowth", 0) * 100 if info.get("revenueGrowth") else 0
-        market_cap = info.get("marketCap", 0) / 10000000 # কোটিতে
+        market_cap = info.get("marketCap", 0) / 10000000 
         
-        # সিগন্যাল লজিক
         action = "🟢 HOLD & RIDE"
-        if current_price < ema_50: action = "🚨 EXIT ALL QTY"
+        if current_price < ema_50: action = "🔴 EMERGENCY EXIT"
         elif current_price < ema_20: action = "💰 BOOK 50% QTY"
         elif current_price >= twenty_w_high: action = "🔥 RE-INVEST"
         
@@ -76,34 +74,37 @@ def analyze_stock(ticker, buy_price=None, qty=None):
 # --- নেভিগেশন ট্যাব ---
 tab1, tab2, tab3 = st.tabs(["🔍 Live Fundamental Screener", "📥 Add Stock to Portfolio", "📊 Portfolio Analysis"])
 
-# =========================================================================
-# TAB 1: LIVE SCREENER WITH FILTER EDIT OPTION
-# =========================================================================
+# TAB 1: LIVE SCREENER WITH EXTERNAL 500 WATCHLIST
 with tab1:
-    st.header("🦅 Custom Factor Screener & Parameter Query")
-    st.write("Screener.in এর মতো এখানে আপনার নিজস্ব ফিল্টার প্যারামিটার এডিট করে রান করুন।")
+    st.header("🦅 Custom Factor Screener (Nifty 500 Watchlist)")
+    st.write("stocks.py ফাইল থেকে ৫০০টি টপ স্টক ব্যাকঅ্যান্ডে রেডি করা আছে। প্যারামিটার সেট করে স্ক্যান করুন।")
     
-    st.markdown("### 🎛️ Edit Filter Parameters (প্যারামিটার পরিবর্তন করুন)")
+    st.markdown("### 🎛️ Edit Filter Parameters")
     
-    # এডিটেবল প্যারামিটার অপশনস
     col1, col2 = st.columns(2)
     with col1:
         min_sales = st.slider("Minimum Sales Growth (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
         min_roe = st.slider("Minimum ROE (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
     with col2:
-        max_pe = st.number_input("Maximum P/E Ratio (0 থেক ১০০ এর মধ্যে রাখুন, ০ মানে ইগনোর)", min_value=0.0, max_value=200.0, value=40.0, step=1.0)
+        max_pe = st.number_input("Maximum P/E Ratio (0 means ignore)", min_value=0.0, max_value=200.0, value=40.0, step=1.0)
         min_mcap = st.number_input("Minimum Market Cap (Cr)", min_value=0.0, value=500.0, step=100.0)
-
-    # ব্যাকঅ্যান্ড স্ক্যানিং ওয়াচলিস্ট (তুমি চাইলে এখানে আরও নাম যোগ করতে পারো)
-    SCREENER_WATCHLIST = ["TIPSINDLTD", "WAAREERTL", "SWARAJENG", "INGERRAND", "TATAMOTORS", "RELIANCE", "INFY", "SHILCHTECH", "CDSL", "HAL"]
     
-    if st.button("🔍 Run Screen Query (সার্চ করুন)"):
-        with st.spinner("আপনার দেওয়া ফিল্টার অনুযায়ী লাইভ মার্কেট স্ক্যান করা হচ্ছে..."):
+    if st.button("🔍 Run Nifty 500 Scan (সার্চ করুন)"):
+        # প্রোগ্রেস বার যাতে ৫০০ স্টক স্ক্যান হতে সুবিধা হয়
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        with st.spinner("৫০০টি স্টকের লাইভ ডেটা ফিল্টার করা হচ্ছে... একটু সময় লাগতে পারে..."):
             screened_results = []
-            for ticker in SCREENER_WATCHLIST:
+            total_stocks = len(SCREENER_WATCHLIST)
+            
+            for index, ticker in enumerate(SCREENER_WATCHLIST):
+                # প্রোগ্রেস আপডেট
+                progress_bar.progress((index + 1) / total_stocks)
+                status_text.text(f"Scanning {index+1}/{total_stocks}: {ticker}")
+                
                 res = analyze_stock(ticker)
                 if res:
-                    # ফিল্টার কন্ডিশন ম্যাচিং লজিক
                     cond_sales = res["Sales Growth (%)"] >= min_sales
                     cond_roe = res["ROE (%)"] >= min_roe
                     cond_mcap = res["Market Cap (Cr)"] >= min_mcap
@@ -111,22 +112,23 @@ with tab1:
                     
                     if cond_sales and cond_roe and cond_mcap and cond_pe:
                         screened_results.append(res)
+                        
+            progress_bar.empty()
+            status_text.empty()
             
             if screened_results:
                 screener_df = pd.DataFrame(screened_results)
                 cols = ["Stock", "CMP (₹)", "Market Cap (Cr)", "P/E Ratio", "ROE (%)", "Sales Growth (%)", "System Action"]
                 st.dataframe(screener_df[cols], use_container_width=True)
-                st.success(f"📈 আপনার কাস্টম কোয়েরি সফলভাবে রান হয়েছে! {len(screener_df)} টি স্টক ফিল্টার পাস করেছে।")
+                st.success(f"📈 স্ক্যান সফল! ৫০০টি কোম্পানির মধ্যে {len(screener_df)} টি স্টক আপনার ফিল্টার পাস করেছে।")
             else:
-                st.warning("⚠️ দুঃখিত! এই ফিল্টার প্যারামিটারে কোনো স্টক ম্যাচ করেনি। প্যারামিটার একটু কমিয়ে আবার ট্রাই করুন।")
+                st.warning("⚠️ এই প্যারামিটারে কোনো স্টক ম্যাচ করেনি।")
 
-# =========================================================================
 # TAB 2: ADD STOCK TO PORTFOLIO
-# =========================================================================
 with tab2:
     st.header("📥 Add New Asset to Tracker")
     with st.form("portfolio_form", clear_on_submit=True):
-        stock_name = st.text_input("Stock Ticker (যেমন: TATAMOTORS, TIPSINDLTD)").upper().strip()
+        stock_name = st.text_input("Stock Ticker (e.g. TATAMOTORS)").upper().strip()
         buy_p = st.number_input("Average Buy Price (₹)", min_value=0.1, step=0.1)
         quantity = st.number_input("Total Quantity", min_value=1, step=1)
         buy_date = st.date_input("Buying Date", datetime.now())
@@ -140,16 +142,14 @@ with tab2:
             st.session_state.portfolio_db = pd.concat([st.session_state.portfolio_db, new_row], ignore_index=True)
             st.success(f"{stock_name} সফলভাবে আপনার পোর্টফোলিওতে যোগ করা হয়েছে!")
 
-# =========================================================================
 # TAB 3: PORTFOLIO ANALYSIS
-# =========================================================================
 with tab3:
     st.header("📊 Real-Time Portfolio Technical Cockpit")
     
     if st.session_state.portfolio_db.empty:
         st.info("💡 আপনার পোর্টফোলিও এখন খালি। 'Add Stock' ট্যাব থেকে কিছু স্টক যোগ করুন।")
     else:
-        with st.spinner("আপনার পোর্টফোলিওর স্টকগুলোর লাইভ চার্ট অ্যানালিসিস চলছে..."):
+        with st.spinner("লাইভ চার্ট অ্যানালিসিস চলছে..."):
             port_results = []
             for _, row in st.session_state.portfolio_db.iterrows():
                 res = analyze_stock(row["Stock"], row["Buy Price"], row["Quantity"])
