@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+from streamlit_gsheets import GSheetsConnection
 
 # বাইরের ফাইল stocks.py থেকে ৫০০টি স্টকের লিস্টটি ইম্পোর্ট করা হচ্ছে
 from stocks import SCREENER_WATCHLIST
@@ -10,14 +11,48 @@ from stocks import SCREENER_WATCHLIST
 # পেজ সেটআপ
 st.set_page_config(page_title="Alpha Institutional Hub", layout="wide")
 
-if "portfolio_db" not in st.session_state:
-    st.session_state.portfolio_db = pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
+# --- গুগল শিট ডেটাবেস কানেকশন ---
+# ড্যাশবোর্ডের সাইডবারে ইউজারকে তার শিটের লিংক দেওয়ার অপশন দেওয়া হলো (সিকিউর প্রসেস)
+st.sidebar.header("⚙️ Database Settings")
+sheet_url = st.sidebar.text_input(
+    "Google Sheet URLটি এখানে পেস্ট করুন:",
+    placeholder="https://docs.google.com/spreadsheets/d/..."
+)
 
+# গুগল শিট থেকে ডেটা লোড করার ফাংশন
+def load_portfolio_data():
+    if not sheet_url:
+        return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
+    try:
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        df = conn.read(spreadsheet=sheet_url, ttl=0) # ttl=0 মানে প্রতিবার ফ্রেশ ডেটা আসবে
+        # যদি শিট খালি থাকে বা কলাম না মেলে
+        if df.empty or "Stock" not in df.columns:
+            return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
+        return df
+    except:
+        return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
+
+# গুগল শিটে ডেটা সেভ করার ফাংশন
+def save_portfolio_data(df):
+    if sheet_url:
+        try:
+            conn = st.connection("gsheets", type=GSheetsConnection)
+            conn.update(spreadsheet=sheet_url, data=df)
+            return True
+        except Exception as e:
+            st.sidebar.error(f"Save Error: {e}")
+            return False
+    return False
+
+# লাইভ ডাটাবেস লোড
+portfolio_df = load_portfolio_data()
+
+# --- ফাংশন: টেকনিক্যাল ও ফান্ডামেন্টাল অ্যানালিসিস ---
 def analyze_stock(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
         stock = yf.Ticker(ticker)
-        
         df = stock.history(period="2y", interval="1wk")
         if df.empty or len(df) < 50: return None
         
@@ -57,7 +92,7 @@ def analyze_stock(ticker, buy_price=None, qty=None):
             invested = buy_price * qty
             current_val = current_price * qty
             pnl = current_val - invested
-            ret_p = (pnl / invested) * 100
+            ret_p = (pnl / invested) * 100 if invested > 0 else 0
             data.update({
                 "Qty": qty,
                 "Avg Buy (₹)": buy_price,
@@ -66,7 +101,6 @@ def analyze_stock(ticker, buy_price=None, qty=None):
                 "P&L (₹)": round(pnl, 2),
                 "Return (%)": round(ret_p, 2)
             })
-            
         return data
     except:
         return None
@@ -74,15 +108,10 @@ def analyze_stock(ticker, buy_price=None, qty=None):
 # --- নেভিগেশন ট্যাব ---
 tab1, tab2, tab3 = st.tabs(["🔍 Live Fundamental Screener", "📥 Add Stock to Portfolio", "📊 Portfolio Analysis"])
 
-# =========================================================================
-# TAB 1: LIVE SCREENER WITH EXTERNAL 500 WATCHLIST
-# =========================================================================
+# TAB 1: LIVE SCREENER
 with tab1:
     st.header("🦅 Custom Factor Screener (Nifty 500 Watchlist)")
-    st.write("stocks.py ফাইল থেকে ৫০০টি টপ স্টক ব্যাকঅ্যান্ডে রেডি করা আছে। প্যারামিটার সেট করে স্ক্যান করুন।")
-    
     st.markdown("### 🎛️ Edit Filter Parameters")
-    
     col1, col2 = st.columns(2)
     with col1:
         min_sales = st.slider("Minimum Sales Growth (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
@@ -91,90 +120,67 @@ with tab1:
         max_pe = st.number_input("Maximum P/E Ratio (0 means ignore)", min_value=0.0, max_value=200.0, value=40.0, step=1.0)
         min_mcap = st.number_input("Minimum Market Cap (Cr)", min_value=0.0, value=500.0, step=100.0)
     
-    if st.button("🔍 Run Nifty 500 Scan (সার্চ করুন)"):
+    if st.button("🔍 Run Nifty 500 Scan"):
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
-        with st.spinner("৫০০টি স্টকের লাইভ ডেটা ফিল্টার করা হচ্ছে... একটু সময় লাগতে পারে..."):
+        with st.spinner("স্ক্যান চলছে..."):
             screened_results = []
             total_stocks = len(SCREENER_WATCHLIST)
-            
             for index, ticker in enumerate(SCREENER_WATCHLIST):
                 progress_bar.progress((index + 1) / total_stocks)
                 status_text.text(f"Scanning {index+1}/{total_stocks}: {ticker}")
-                
                 res = analyze_stock(ticker)
                 if res:
-                    cond_sales = res["Sales Growth (%)"] >= min_sales
-                    cond_roe = res["ROE (%)"] >= min_roe
-                    cond_mcap = res["Market Cap (Cr)"] >= min_mcap
-                    cond_pe = True if max_pe == 0 or (res["P/E Ratio"] <= max_pe) else False
-                    
-                    if cond_sales and cond_roe and cond_mcap and cond_pe:
+                    if res["Sales Growth (%)"] >= min_sales and res["ROE (%)"] >= min_roe and res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe):
                         screened_results.append(res)
-                        
             progress_bar.empty()
             status_text.empty()
-            
             if screened_results:
-                screener_df = pd.DataFrame(screened_results)
-                cols = ["Stock", "CMP (₹)", "Market Cap (Cr)", "P/E Ratio", "ROE (%)", "Sales Growth (%)", "System Action"]
-                st.dataframe(screener_df[cols], use_container_width=True)
-                st.success(f"📈 স্ক্যান সফল! ৫০০টি কোম্পানির মধ্যে {len(screener_df)} টি স্টক আপনার ফিল্টার পাস করেছে।")
+                st.dataframe(pd.DataFrame(screened_results)[["Stock", "CMP (₹)", "Market Cap (Cr)", "P/E Ratio", "ROE (%)", "Sales Growth (%)", "System Action"]], use_container_width=True)
             else:
-                st.warning("⚠️ এই প্যারামিটারে কোনো স্টক ম্যাচ করেনি।")
+                st.warning("⚠️ কোনো স্টক ম্যাচ করেনি।")
 
-# =========================================================================
-# TAB 2: ADD STOCK TO PORTFOLIO WITH SEARCH HELPER (AUTO-COMPLETE)
-# =========================================================================
+# TAB 2: ADD STOCK TO PORTFOLIO (গুগল শিটে রাইট করবে)
 with tab2:
     st.header("📥 Add New Asset to Tracker")
-    st.write("সার্চ বক্সে স্টকের প্রথম কয়েকটি লেটার টাইপ করলেই ৫০০টি ভালো স্টকের সাজেশন দেখতে পাবেন।")
+    if not sheet_url:
+        st.warning("⚠️ পোর্টফোলিও ফিচারটি সক্রিয় করতে প্রথমে বাঁদিকের সাইডবারে আপনার Google Sheet URLটি পেস্ট করুন!")
     
     with st.form("portfolio_form", clear_on_submit=True):
-        # সার্চ হেল্পার উইজেট (st.selectbox দিয়ে ড্রপডাউন এবং টাইপিং সাজেশন চালু করা হলো)
-        # এখানে index=None দেওয়া হয়েছে যাতে প্রথমে কোনো স্টক সিলেক্ট না হয়ে ফাঁকা দেখায়
-        stock_name = st.selectbox(
-            "🔍 Select/Search Stock Ticker", 
-            options=sorted(SCREENER_WATCHLIST), 
-            index=None,
-            placeholder="Type stock letters... (e.g. TATA, RELIANCE, INFY)"
-        )
-        
+        stock_name = st.selectbox("🔍 Select/Search Stock Ticker", options=sorted(SCREENER_WATCHLIST), index=None, placeholder="Type stock letters...")
         buy_p = st.number_input("Average Buy Price (₹)", min_value=0.1, step=0.1)
         quantity = st.number_input("Total Quantity", min_value=1, step=1)
         buy_date = st.date_input("Buying Date", datetime.now())
-        
         submit_btn = st.form_submit_button("➕ Add Stock to My Portfolio")
         
-        if submit_btn:
+        if submit_btn and sheet_url:
             if not stock_name:
-                st.error("⚠️ অনুগ্রহ করে সাজেশন থেকে একটি স্টক সিলেক্ট করুন!")
+                st.error("⚠️ একটি স্টক সিলেক্ট করুন!")
             else:
                 new_row = pd.DataFrame([{
                     "Stock": stock_name, "Buy Price": buy_p, "Quantity": quantity, "Date": str(buy_date)
                 }])
-                st.session_state.portfolio_db = pd.concat([st.session_state.portfolio_db, new_row], ignore_index=True)
-                st.success(f"🎉 {stock_name} সফলভাবে আপনার পোর্টফোলিওতে যোগ করা হয়েছে!")
+                updated_portfolio = pd.concat([portfolio_df, new_row], ignore_index=True)
+                if save_portfolio_data(updated_portfolio):
+                    st.success(f"🎉 {stock_name} সফলভাবে Google Sheet ডেটাবেসে সেভ করা হয়েছে!")
+                    st.rerun()
 
-# =========================================================================
-# TAB 3: PORTFOLIO ANALYSIS
-# =========================================================================
+# TAB 3: PORTFOLIO ANALYSIS (গুগল শিট থেকে রিড করবে)
 with tab3:
     st.header("📊 Real-Time Portfolio Technical Cockpit")
-    
-    if st.session_state.portfolio_db.empty:
-        st.info("💡 আপনার পোর্টফোলিও এখন খালি। 'Add Stock' ট্যাব থেকে কিছু স্টক যোগ করুন।")
+    if not sheet_url:
+        st.info("💡 সাইডবারে Google Sheet URL পেস্ট করলেই আপনার রিয়েল পোর্টফোলিও অ্যানালিসিস এখানে লোড হবে।")
+    elif portfolio_df.empty:
+        st.info("💡 আপনার গুগল শিটটি এই মুহূর্তে খালি। ট্যাব ২ থেকে স্টক যোগ করুন।")
     else:
-        with st.spinner("লাইভ চার্ট অ্যানালিসিস চলছে..."):
+        with st.spinner("গুগল শিট থেকে ডেটা নিয়ে লাইভ চার্ট অ্যানালিসিস চলছে..."):
             port_results = []
-            for _, row in st.session_state.portfolio_db.iterrows():
-                res = analyze_stock(row["Stock"], row["Buy Price"], row["Quantity"])
+            for _, row in portfolio_df.iterrows():
+                res = analyze_stock(row["Stock"], float(row["Buy Price"]), int(row["Quantity"]))
                 if res: port_results.append(res)
                 
             if port_results:
                 port_df = pd.DataFrame(port_results)
-                
                 t_invested = port_df["Invested (₹)"].sum()
                 t_current = port_df["Current Value (₹)"].sum()
                 t_pnl = port_df["P&L (₹)"].sum()
@@ -186,17 +192,13 @@ with tab3:
                 m3.metric("Net Live P&L", f"₹{t_pnl:,.2f}", f"{t_ret:.2f}%")
                 
                 st.markdown("---")
-                
                 c1, c2 = st.columns(2)
                 with c1:
-                    fig_p = px.pie(port_df, values="Current Value (₹)", names="Stock", hole=0.4, title="Portfolio Allocation")
-                    st.plotly_chart(fig_p, use_container_width=True)
+                    st.plotly_chart(px.pie(port_df, values="Current Value (₹)", names="Stock", hole=0.4, title="Portfolio Allocation"), use_container_width=True)
                 with c2:
-                    fig_b = px.bar(port_df, x="Stock", y="P&L (₹)", color="P&L (₹)", color_continuous_scale="RdYlGn", title="Stock-wise Profit/Loss")
-                    st.plotly_chart(fig_b, use_container_width=True)
-                    
-                st.markdown("---")
+                    st.plotly_chart(px.bar(port_df, x="Stock", y="P&L (₹)", color="P&L (₹)", color_continuous_scale="RdYlGn", title="Stock-wise Profit/Loss"), use_container_width=True)
                 
+                st.markdown("---")
                 st.subheader("📋 Live Technical Signals & Action Plan")
                 disp_cols = ["Stock", "Qty", "Avg Buy (₹)", "CMP (₹)", "Return (%)", "P&L (₹)", "System Action", "20 EMA", "50 EMA"]
                 st.dataframe(port_df[disp_cols], use_container_width=True)
