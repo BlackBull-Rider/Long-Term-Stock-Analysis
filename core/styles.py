@@ -2,7 +2,7 @@
 import streamlit as st
 
 def apply_terminal_theme():
-    """Streamlit-এর ক্লিক ইভেন্ট ঠিক রেখে সাইডবার মেনু বাটন বড় এবং স্টাইলিশ করার ফিক্সড কোড"""
+    """লেটেস্ট স্ট্রিমলিট ইঞ্জিনের জন্য আল্ট্রা-পেশাদার সাইবার থিম এবং বড় মেনু বাটন"""
     st.markdown("""
         <style>
         /* মেইন রেসপনসিভ ব্যাকগ্রাউন্ড */
@@ -19,15 +19,13 @@ def apply_terminal_theme():
         }
 
         /* =========================================================================
-           🚀 আল্ট্রা-স্টাইলিশ ও বড় সাইডবার মেনু বাটন (ক্লিক ইভেন্ট ১০০% সেফ)
+           🚀 আল্ট্রা-স্টাইলিশ ও বড় সাইডবার মেনু বাটন (জাভাস্ক্রিপ্ট সেফ)
            ========================================================================= */
-        /* প্রতিটা মেনু অপশনের মাঝখানের গ্যাপ বাড়ানো */
         [data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
             gap: 12px !important;
             padding-top: 10px;
         }
 
-        /* প্রতিটা বাটনকে বড়, চওড়া ও মোটা করা (উইদাউট ব্রেকিং স্ট্রিমলিট জাভাস্ক্রিপ্ট) */
         [data-testid="stSidebar"] div[data-testid="stRadio"] label {
             background-color: #121829 !important;
             border: 1px solid #1e294b !important;
@@ -40,34 +38,61 @@ def apply_terminal_theme():
             margin: 0px !important;
         }
 
-        /* বাটনের ভেতরের টেক্সট সাইজ বড় এবং বোল্ড করা */
         [data-testid="stSidebar"] div[data-testid="stRadio"] label p {
             font-size: 16px !important;
             font-weight: 700 !important;
             color: #cbd5e1 !important;
         }
 
-        /* মোবাইলে টাচ করলে বা মাউস নিয়ে গেলে নিয়ন সায়ান এফেক্ট */
         [data-testid="stSidebar"] div[data-testid="stRadio"] label:hover {
             border-color: #00e5ff !important;
             background-color: #16223f !important;
             box-shadow: 0px 0px 10px rgba(0, 229, 255, 0.2) !important;
         }
 
-        /* 🟢 একটিভ/সিলেক্টেড মেনু বাটনের রাজকীয় নিয়ন গ্রিন গ্লো ও টেক্সট হাইলাইট */
+        /* 🟢 সিলেক্টেড মেনু বাটনের রাজকীয় নিয়ন গ্রিন গ্লো ও টেক্সট হাইলাইট */
         [data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] > div:has(input:checked) label {
             background: linear-gradient(135deg, #142834 0%, #0d2e27 100%) !important;
             border: 2px solid #00e676 !important;
             box-shadow: 0px 0px 15px rgba(0, 230, 118, 0.3) !important;
         }
 
-        /* সিলেক্টেড বাটনের টেক্সট কালার নিয়ন গ্রিন করা */
         [data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] > div:has(input:checked) label p {
             color: #00e676 !important;
         }
+
+        /* =========================================================================
+           📊 ইনপুট বক্স ও নতুন সাবহেডিং লাইন্স টিউনিং (মোবাইল ফ্রেন্ডলি)
+           ========================================================================= */
+        /* সাবহেডিং গ্লো লাইন */
+        h4 {
+            color: #00e5ff !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            margin-top: 25px !important;
+            border-bottom: 1px solid #1e294b;
+            padding-bottom: 8px;
+        }
+
+        /* টাইপিং বক্সের স্টাইলিং */
+        div[data-testid="stNumberInput"] input {
+            background-color: #121829 !important;
+            color: #ffffff !important;
+            border: 1px solid #1e294b !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+        }
+
+        /* মোবাইলের জন্য বড় ডাটাফ্রেম টেবিল ফিক্স */
+        div[data-testid="stDataFrame"] {
+            background-color: #0f1424 !important;
+            border: 1px solid #1e294b !important;
+            border-radius: 8px !important;
+        }
+
         /* ========================================================================= */
 
-        /* গ্লোয়িং প্রফেশনাল ফান্ড管理器 হেডার ব্যানার */
+        /* গ্লোয়িং প্রফেশনাল ফান্ড ম্যানেজার হেডার ব্যানার */
         .header-banner {
             background: linear-gradient(135deg, #0d1b2a 0%, #1b4332 100%);
             padding: 25px;
@@ -133,6 +158,6 @@ def render_branding_header():
 def render_terminal_footer():
     st.markdown("""
         <div class="footer-terminal">
-            📊 Alpha Terminal Core v4.0 | Fully Modular Architecture | Engineered for <b>Green Bull Rider</b> (Biswajit Jana)
+            📊 Alpha Terminal Core v5.0 | Fully Modular Architecture | Engineered for <b>Green Bull Rider</b> (Biswajit Jana)
         </div>
     """, unsafe_allow_html=True)
