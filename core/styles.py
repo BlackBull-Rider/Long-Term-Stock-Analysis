@@ -35,6 +35,30 @@ def apply_terminal_theme():
             border: 1px solid #1e293b;
             border-radius: 6px;
         }
+        
+        /* 📜 Glowing Institutional Header Banner Box */
+        .header-banner {
+            background-color: #0f141c;
+            padding: 22px;
+            border-radius: 12px;
+            border: 2px solid #00ffcc;
+            box-shadow: 0px 0px 15px rgba(0, 255, 204, 0.2);
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .header-title {
+            color: #00ffcc !important;
+            font-size: 28px !important;
+            font-weight: 800 !important;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+        .header-subtitle {
+            color: #00e5ff !important;
+            font-size: 14px !important;
+            font-weight: 600;
+        }
+        
         .guide-box {
             background-color: #111827;
             border-left: 4px solid #00ffcc;
@@ -48,9 +72,12 @@ def apply_terminal_theme():
     """, unsafe_allow_html=True)
 
 def render_branding_header():
-    st.markdown("# 🦅 GREEN BULL RIDER | QUANT TERMINAL v10.0")
-    st.markdown("`OPERATOR: BISWAJIT JANA` | `SYSTEM STATUS: SECURE` | `DATA DEVIATION: BYPASS ACTIVE`")
-    st.markdown("---")
+    st.markdown("""
+        <div class="header-banner">
+            <div class="header-title">🟢 GREEN BULL RIDER</div>
+            <div class="header-subtitle">🚀 Creator & Fund Manager — Biswajit Jana</div>
+        </div>
+    """, unsafe_allow_html=True)
 
 def render_operational_guidelines():
     st.markdown("""
@@ -65,4 +92,4 @@ def render_operational_guidelines():
 
 def render_terminal_footer():
     st.markdown("---")
-    st.markdown("<p style='text-align: center; color: #64748b; font-size: 11px;'>🔒 END OF TERMINAL SESSION | GREEN BULL RIDER FRAMEWORK</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #64748b; font-size: 11px;'>🔒 END OF TERMINAL SESSION | GREEN BULL RIDER SOFTWARE SYSTEM</p>", unsafe_allow_html=True)
