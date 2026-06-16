@@ -40,40 +40,40 @@ def track_advanced_portfolio(ticker, holding_info):
         twenty_week_high = df['20_Week_High'].iloc[-1]
         
         # পিওর টেকনিক্যাল প্রফিট বুকিং এবং এন্ট্রি লজিক
-        action = "📈 STRONG BULL TREND: HOLD & RIDE"
+        action = "📈 HOLD & RIDE"
         qty_to_book = 0
         qty_to_hold = qty
         
         # ১. যদি লং-টার্ম সাপোর্ট (50 EMA) ব্রেক হয় -> ফুল এক্সিট
         if current_price < ema_50:
-            action = "🚨 TREND REVERSED: EXIT ALL QUANTITY"
+            action = "🚨 EXIT ALL QTY"
             qty_to_book = qty
             qty_to_hold = 0
             
-        # ২. যদি শর্ট-টার্ম মোメントাম লাইন (20 EMA) ব্রেক হয় -> ৫০% প্রফিট বুক
+        # ২. যদি শর্ট-টার্ম মোমেন্টাম লাইন (20 EMA) ব্রেক হয় -> ৫০% প্রফিট বুক
         elif current_price < ema_20:
-            action = "💰 MOMENTUM WEAK: BOOK 50% QUANTITY"
+            action = "💰 BOOK 50% QTY"
             qty_to_book = round(qty / 2)
             qty_to_hold = qty - qty_to_book
             
         # ৩. যদি কারেন্ট প্রাইস ২০-উইক হাই ব্রেক করে ওপরে ওড়ে -> নতুন করে রি-ইনভেস্ট
         elif current_price >= twenty_week_high:
-            action = "🔥 BREAKOUT: HOLD / RE-INVEST ALLOWED"
+            action = "🔥 RE-INVEST"
             qty_to_book = 0
             qty_to_hold = qty
 
         return {
             "Stock": ticker.replace(".NS", ""),
-            "Qty": qty,
-            "Avg Buy (Rs.)": round(buy_price, 2),
-            "CMP (Rs.)": round(current_price, 2),
-            "Return (%)": f"{round(current_return_p, 2)}%",
-            "P&L (Rs.)": round(pnl, 2),
+            "Qty": int(qty),
+            "Avg Buy": round(buy_price, 2),
+            "CMP": round(current_price, 2),
+            "Return": f"{round(current_return_p, 2)}%",
+            "P&L": round(pnl, 2),
             "System Action": action,
-            "Book Qty": qty_to_book,
-            "Hold Qty": qty_to_hold,
-            "20 EMA (Partial Booking)": round(ema_20, 2) if not pd.isna(ema_20) else "N/A",
-            "50 EMA (Full Exit Line)": round(ema_50, 2) if not pd.isna(ema_50) else "N/A"
+            "Book Qty": int(qty_to_book),
+            "Hold Qty": int(qty_to_hold),
+            "20 EMA": round(ema_20, 2),
+            "50 EMA": round(ema_50, 2)
         }
     except Exception as e:
         return None
@@ -93,7 +93,7 @@ if st.button("🔄 Scan & Track Portfolio Live"):
                 
         if results:
             final_df = pd.DataFrame(results)
-            total_pnl = final_df["P&L (Rs.)"].sum()
+            total_pnl = final_df["P&L"].sum()
             
             st.write("---")
             kpi1, kpi2 = st.columns(2)
@@ -101,19 +101,8 @@ if st.button("🔄 Scan & Track Portfolio Live"):
             kpi2.metric(label="Total Tracked Assets", value=str(len(final_df)))
             st.write("---")
             
-            def highlight_action(val):
-                if "BOOK 50%" in val:
-                    return 'background-color: #e67e22; color: white; font-weight: bold;'
-                elif "EXIT" in val:
-                    return 'background-color: #e74c3c; color: white; font-weight: bold;'
-                elif "RE-INVEST" in val:
-                    return 'background-color: #2ecc71; color: white; font-weight: bold;'
-                return 'background-color: #2c3e50; color: #ecf0f1;'
-
-            st.dataframe(
-                final_df.style.map(highlight_action, subset=['System Action']),
-                use_container_width=True
-            )
-            st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড আপডেট করা হয়েছে!")
+            # ডেটা ডিসপ্লে স্টেবিলিটি নিশ্চিত করতে স্ট্যান্ডার্ড ডেটাফ্রেম ভিউ
+            st.dataframe(final_df, use_container_width=True)
+            st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড সফলভাবে আপডেট করা হয়েছে!")
         else:
             st.error("কোনো ডেটা পাওয়া যায়নি। অনুগ্রহ করে হোল্ডিং লিস্ট চেক করুন।")
