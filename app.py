@@ -74,7 +74,9 @@ def analyze_stock(ticker, buy_price=None, qty=None):
 # --- নেভিগেশন ট্যাব ---
 tab1, tab2, tab3 = st.tabs(["🔍 Live Fundamental Screener", "📥 Add Stock to Portfolio", "📊 Portfolio Analysis"])
 
+# =========================================================================
 # TAB 1: LIVE SCREENER WITH EXTERNAL 500 WATCHLIST
+# =========================================================================
 with tab1:
     st.header("🦅 Custom Factor Screener (Nifty 500 Watchlist)")
     st.write("stocks.py ফাইল থেকে ৫০০টি টপ স্টক ব্যাকঅ্যান্ডে রেডি করা আছে। প্যারামিটার সেট করে স্ক্যান করুন।")
@@ -90,7 +92,6 @@ with tab1:
         min_mcap = st.number_input("Minimum Market Cap (Cr)", min_value=0.0, value=500.0, step=100.0)
     
     if st.button("🔍 Run Nifty 500 Scan (সার্চ করুন)"):
-        # প্রোগ্রেস বার যাতে ৫০০ স্টক স্ক্যান হতে সুবিধা হয়
         progress_bar = st.progress(0)
         status_text = st.empty()
         
@@ -99,7 +100,6 @@ with tab1:
             total_stocks = len(SCREENER_WATCHLIST)
             
             for index, ticker in enumerate(SCREENER_WATCHLIST):
-                # প্রোগ্রেস আপডেট
                 progress_bar.progress((index + 1) / total_stocks)
                 status_text.text(f"Scanning {index+1}/{total_stocks}: {ticker}")
                 
@@ -124,25 +124,42 @@ with tab1:
             else:
                 st.warning("⚠️ এই প্যারামিটারে কোনো স্টক ম্যাচ করেনি।")
 
-# TAB 2: ADD STOCK TO PORTFOLIO
+# =========================================================================
+# TAB 2: ADD STOCK TO PORTFOLIO WITH SEARCH HELPER (AUTO-COMPLETE)
+# =========================================================================
 with tab2:
     st.header("📥 Add New Asset to Tracker")
+    st.write("সার্চ বক্সে স্টকের প্রথম কয়েকটি লেটার টাইপ করলেই ৫০০টি ভালো স্টকের সাজেশন দেখতে পাবেন।")
+    
     with st.form("portfolio_form", clear_on_submit=True):
-        stock_name = st.text_input("Stock Ticker (e.g. TATAMOTORS)").upper().strip()
+        # সার্চ হেল্পার উইজেট (st.selectbox দিয়ে ড্রপডাউন এবং টাইপিং সাজেশন চালু করা হলো)
+        # এখানে index=None দেওয়া হয়েছে যাতে প্রথমে কোনো স্টক সিলেক্ট না হয়ে ফাঁকা দেখায়
+        stock_name = st.selectbox(
+            "🔍 Select/Search Stock Ticker", 
+            options=sorted(SCREENER_WATCHLIST), 
+            index=None,
+            placeholder="Type stock letters... (e.g. TATA, RELIANCE, INFY)"
+        )
+        
         buy_p = st.number_input("Average Buy Price (₹)", min_value=0.1, step=0.1)
         quantity = st.number_input("Total Quantity", min_value=1, step=1)
         buy_date = st.date_input("Buying Date", datetime.now())
         
         submit_btn = st.form_submit_button("➕ Add Stock to My Portfolio")
         
-        if submit_btn and stock_name:
-            new_row = pd.DataFrame([{
-                "Stock": stock_name, "Buy Price": buy_p, "Quantity": quantity, "Date": str(buy_date)
-            }])
-            st.session_state.portfolio_db = pd.concat([st.session_state.portfolio_db, new_row], ignore_index=True)
-            st.success(f"{stock_name} সফলভাবে আপনার পোর্টফোলিওতে যোগ করা হয়েছে!")
+        if submit_btn:
+            if not stock_name:
+                st.error("⚠️ অনুগ্রহ করে সাজেশন থেকে একটি স্টক সিলেক্ট করুন!")
+            else:
+                new_row = pd.DataFrame([{
+                    "Stock": stock_name, "Buy Price": buy_p, "Quantity": quantity, "Date": str(buy_date)
+                }])
+                st.session_state.portfolio_db = pd.concat([st.session_state.portfolio_db, new_row], ignore_index=True)
+                st.success(f"🎉 {stock_name} সফলভাবে আপনার পোর্টফোলিওতে যোগ করা হয়েছে!")
 
+# =========================================================================
 # TAB 3: PORTFOLIO ANALYSIS
+# =========================================================================
 with tab3:
     st.header("📊 Real-Time Portfolio Technical Cockpit")
     
