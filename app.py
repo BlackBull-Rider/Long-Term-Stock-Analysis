@@ -12,9 +12,6 @@ from stocks import SCREENER_WATCHLIST
 # পেজ কনফিগারেশন
 st.set_page_config(page_title="Alpha Institutional Terminal", layout="wide", initial_sidebar_state="collapsed")
 
-# গুগল শিটের লিংক কোডের ভেতরে ফিক্সড
-sheet_url = "https://docs.google.com/spreadsheets/d/1ld54OCt-mfc5qGCGdFmCXXrZeTHPLBWWL7eG0cxSRlU/edit"
-
 st.markdown("""
     <style>
     .metric-card {
@@ -27,19 +24,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# অফিশিয়াল গিটহাব কানেকশন ইনিশিয়ালাইজেশন
+conn = st.connection("gsheets", type=GSheetsConnection)
+
 # গুগল শিট থেকে ডেটা লোড করার ফাংশন
 def load_portfolio_data():
     try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(spreadsheet=sheet_url, ttl=0)
-        
+        # secrets.toml এ দেওয়া মূল কানেকশন দিয়ে রিড করা হচ্ছে
+        df = conn.read(ttl=0)
         if df.empty or len(df.columns) < 4:
             return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
             
-        # কলামের নাম স্ট্যান্ডার্ড ফরম্যাটে আনা
         df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
-        
-        # ডাটা ক্লিনিং: ফাঁকা রো এবং NaN দূর করার ইনস্টিটিউশনাল মেকানিজম
         df = df.dropna(subset=["Stock"])
         df['Stock'] = df['Stock'].astype(str).str.upper().str.strip()
         df = df[df['Stock'] != ""]
@@ -47,7 +43,6 @@ def load_portfolio_data():
         df['Buy Price'] = pd.to_numeric(df['Buy Price'], errors='coerce').fillna(0.0)
         df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce').fillna(0).astype(int)
         
-        # যেসব রোর কোয়ান্টিটি বা প্রাইস ০, সেগুলোকে বাদ দেওয়া
         df = df[(df['Buy Price'] > 0) & (df['Quantity'] > 0)]
         return df.reset_index(drop=True)
     except:
@@ -57,8 +52,8 @@ def load_portfolio_data():
 def save_portfolio_data(df):
     try:
         df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        conn.update(spreadsheet=sheet_url, data=df)
+        # অফিশিয়াল কানেকশন দিয়ে সরাসরি শিটে রাইট করা হচ্ছে
+        conn.update(data=df)
         return True
     except:
         return False
@@ -70,7 +65,6 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
         stock = yf.Ticker(ticker)
-        
         df = stock.history(period="2y", interval="1wk")
         if df.empty or len(df) < 50: return None
         
@@ -179,7 +173,7 @@ with tab2:
         submit_btn = st.form_submit_button("🚀 Execute Transaction & Update Sheet")
         
         if submit_btn and stock_name:
-            global_portfolio = load_portfolio_data() # ফ্রেশ ডেটা রিলোড করা হচ্ছে
+            global_portfolio = load_portfolio_data()
             
             if "BUY" in trade_type:
                 if stock_name in global_portfolio['Stock'].values:
@@ -223,7 +217,6 @@ with tab3:
         with st.spinner("Calculating Portfolio Risk Analytics..."):
             port_results = []
             for _, row in portfolio_df.iterrows():
-                # প্রতিটি মান কনভার্ট করার আগে ডাবল সেফটি চেক
                 try:
                     s_name = str(row["Stock"])
                     s_price = float(row["Buy Price"])
