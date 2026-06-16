@@ -3,7 +3,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
@@ -13,7 +12,7 @@ from stocks import SCREENER_WATCHLIST
 # পেজ কনফিগারেশন (Bloomberg Dark theme look)
 st.set_page_config(page_title="Alpha Institutional Terminal", layout="wide", initial_sidebar_state="collapsed")
 
-# কাস্টম সিএসএস দিয়ে ড্যাশবোর্ডকে আরও প্রিমিয়াম লুক দেওয়া
+# কাস্টম সিএসএস এরর ফিক্স করা হয়েছে (unsafe_allow_html=True ব্যবহার করে)
 st.markdown("""
     <style>
     .metric-card {
@@ -24,13 +23,16 @@ st.markdown("""
         box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
     }
     </style>
-""", unsafe_style_code=True)
+""", unsafe_allow_html=True)
 
 # --- গিটহাব সিক্রেট থেকে গুগল শিট লিংক অটো-লোড ---
+sheet_url = None
 try:
     sheet_url = st.secrets["public_gsheets_url"]
+    # লিংকের শেষের ড্রাইভ ফরম্যাট ক্লিন করার লজিক
+    if sheet_url and "?" in sheet_url:
+        sheet_url = sheet_url.split("?")[0]
 except:
-    sheet_url = None
     st.error("🚨 .streamlit/secrets.toml ফাইলে গুগল শিটের লিংক পাওয়া যায়নি!")
 
 def load_portfolio_data():
@@ -57,19 +59,17 @@ def save_portfolio_data(df):
 
 portfolio_df = load_portfolio_data()
 
-# --- অ্যাডভান্সড অ্যানালিসিস ইঞ্জিন ---
+# --- অ্যাডভান্সড ট্রেন্ড ও রিস্ক অ্যানালিসিস ইঞ্জিন ---
 def analyze_stock_advanced(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
         stock = yf.Ticker(ticker)
         
-        # ২ বছরের উইকলি ডেটা
         df = stock.history(period="2y", interval="1wk")
         if df.empty or len(df) < 50: return None
         
         current_price = df['Close'].iloc[-1]
         
-        # টেকনিক্যাল ইন্ডিকেটর
         df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         df['20_W_High'] = df['High'].shift(1).rolling(window=20).max()
@@ -80,20 +80,17 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
         twenty_w_high = df['20_W_High'].iloc[-1]
         two_y_high = df['2y_High'].iloc[-1]
         
-        # অ্যাডভান্সড ম্যাট্রিক্স ক্যালকুলেশন
         dist_20_ema = ((current_price - ema_20) / ema_20) * 100
         dist_50_ema = ((current_price - ema_50) / ema_50) * 100
         max_drawdown = ((current_price - two_y_high) / two_y_high) * 100
         
-        # ফান্ডামেন্টালস
         info = stock.info
         pe_ratio = info.get("trailingPE", 0)
         roe = info.get("returnOnEquity", 0) * 100 if info.get("returnOnEquity") else 0
         sales_growth = info.get("revenueGrowth", 0) * 100 if info.get("revenueGrowth") else 0
         market_cap = info.get("marketCap", 0) / 10000000 
-        beta = info.get("beta", 1.0) # স্টক বেটা (মার্কেট রিস্ক)
+        beta = info.get("beta", 1.0)
 
-        # ইনস্টিটিউশনাল সিগন্যাল
         action = "🟢 STRONG BULL: HOLD"
         if current_price < ema_50: action = "🔴 TREND REVERSED: EXIT"
         elif current_price < ema_20: action = "🟠 MOMENTUM WEAK: BOOK 50%"
@@ -136,9 +133,7 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
 st.title("🦅 Alpha Institutional Investment Terminal")
 tab1, tab2, tab3 = st.tabs(["🔍 Live Screener", "📥 Add Asset", "📊 Deep Portfolio Analysis"])
 
-# =========================================================================
-# TAB 1 & 2: সংক্ষেপিত স্ট্যান্ডার্ড কোড (পূর্বে তৈরি)
-# =========================================================================
+# TAB 1: SCREENER
 with tab1:
     st.header("🎛️ Screener Core")
     col1, col2 = st.columns(2)
@@ -150,16 +145,17 @@ with tab1:
     if st.button("🔍 Execute Screen Scan"):
         progress = st.progress(0)
         results = []
-        for index, ticker in enumerate(SCREENER_WATCHLIST[:50]): # প্রথম ৫০টি দ্রুত স্ক্যানের জন্য
-            progress.progress((index + 1) / 50)
+        for index, ticker in enumerate(SCREENER_WATCHLIST[:30]): # দ্রুত স্ক্যানের জন্য ৩০টি টপ স্টক
+            progress.progress((index + 1) / 30)
             res = analyze_stock_advanced(ticker)
             if res:
                 if res["Sales Growth (%)"] >= min_sales and res["ROE (%)"] >= min_roe and res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe):
                     results.append(res)
         progress.empty()
         if results:
-            st.dataframe(pd.DataFrame(results), use_container_width=True)
+            st.dataframe(pd.DataFrame(results)[["Stock", "CMP (₹)", "Market Cap (Cr)", "P/E Ratio", "ROE (%)", "Sales Growth (%)", "System Action"]], use_container_width=True)
 
+# TAB 2: ASSET INTAKE FORM
 with tab2:
     st.header("📥 Asset Intake Form")
     with st.form("portfolio_form", clear_on_submit=True):
@@ -173,9 +169,7 @@ with tab2:
                 st.success("Asset Synergized with Cloud Database!")
                 st.rerun()
 
-# =========================================================================
-# TAB 3: DEEP PORTFOLIO ANALYSIS (HIGH LEVEL INSTITUTIONAL COCKPIT)
-# =========================================================================
+# TAB 3: DEEP PORTFOLIO ANALYSIS
 with tab3:
     st.header("📊 Institutional Risk & Performance Analytics")
     if portfolio_df.empty:
@@ -190,13 +184,11 @@ with tab3:
             if port_results:
                 port_df = pd.DataFrame(port_results)
                 
-                # --- ১. ইনস্টিটিউশনাল কেপিআই সমাহার ---
                 t_invested = port_df["Invested (₹)"].sum()
                 t_current = port_df["Current Value (₹)"].sum()
                 t_pnl = port_df["P&L (₹)"].sum()
                 t_ret = (t_pnl / t_invested) * 100 if t_invested > 0 else 0
                 
-                # ওয়েটেড পোর্টফোলিও বেটা ও ভ্যালুয়েশন
                 port_df["Weight"] = port_df["Current Value (₹)"] / t_current
                 weighted_beta = (port_df["Beta"] * port_df["Weight"]).sum()
                 weighted_pe = (port_df["P/E Ratio"] * port_df["Weight"]).sum()
@@ -210,57 +202,21 @@ with tab3:
                 
                 st.markdown("---")
                 
-                # --- ২. অ্যাডভান্সড চার্টস অ্যান্ড রিস্ক ভিজ্যুয়ালের কম্বিনেশন ---
                 col_c1, col_c2, col_c3 = st.columns(3)
-                
                 with col_c1:
-                    st.subheader("🎯 Capital Allocation Matrix")
-                    fig_pie = px.pie(port_df, values="Current Value (₹)", names="Stock", hole=0.5,
-                                     color_discrete_sequence=px.colors.sequential.Tealgrn)
-                    fig_pie.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
-                    st.plotly_chart(fig_pie, use_container_width=True)
-                    
+                    st.plotly_chart(px.pie(port_df, values="Current Value (₹)", names="Stock", hole=0.5, title="Capital Allocation Matrix"), use_container_width=True)
                 with col_c2:
-                    st.subheader("⚡ Risk vs Reward Scatter Chart")
-                    # এই চার্ট দেখাবে কোন স্টক বেশি রিস্কি (High Beta) আর কোনটা বেশি রিটার্ন দিচ্ছে
-                    fig_scat = px.scatter(port_df, x="Beta", y="Return (%)", text="Stock", size="Qty",
-                                          color="P&L (₹)", color_continuous_scale="RdYlGn")
-                    fig_scat.update_layout(margin=dict(t=10, b=10, l=10, r=10))
-                    st.plotly_chart(fig_scat, use_container_width=True)
-                    
+                    st.plotly_chart(px.scatter(port_df, x="Beta", y="Return (%)", text="Stock", size="Qty", color="P&L (₹)", color_continuous_scale="RdYlGn", title="Risk vs Reward Scatter"), use_container_width=True)
                 with col_c3:
-                    st.subheader("📉 Max Drawdown Chart")
-                    # কোম্পানি ২ বছরের পিক থেকে কতটা ডাউন আছে
-                    fig_bar_dd = px.bar(port_df, x="Stock", y="Max DD (%)", color="Max DD (%)", color_continuous_scale="Reds_r")
-                    fig_bar_dd.update_layout(margin=dict(t=10, b=10, l=10, r=10))
-                    st.plotly_chart(fig_bar_dd, use_container_width=True)
+                    st.plotly_chart(px.bar(port_df, x="Stock", y="Max DD (%)", color="Max DD (%)", color_continuous_scale="Reds_r", title="Max Drawdown Chart"), use_container_width=True)
                 
                 st.markdown("---")
-                
-                # --- ৩. মেইন প্রফেশনাল ডেটাবেস ভিউ (Bloomberg Layout) ---
                 st.subheader("📋 Advanced Execution Metrics & Technical Buffer")
                 
-                # সিগন্যাল হাইলাইটিংয়ের কাস্টম ফাংশন
-                def style_institutional_terminal(df):
-                    color_df = pd.DataFrame('', index=df.index, columns=df.columns)
-                    for i, val in enumerate(df['System Action']):
-                        if "🔴" in val: color_df.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #b71c1c; color: white; font-weight: bold;'
-                        elif " sovereigns" in val or "🟠" in val: color_df.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #e65100; color: white; font-weight: bold;'
-                        elif "🔥" in val: color_df.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #004d40; color: white; font-weight: bold;'
-                        else: color_df.iloc[i, df.columns.get_loc('System Action')] = 'background-color: #1b5e20; color: white; font-weight: bold;'
-                    return color_df
-
-                # ডিসপ্লে কলাম সেটআপ
                 display_terminal_cols = [
                     "Stock", "Qty", "Avg Buy (₹)", "CMP (₹)", "Return (%)", "P&L (₹)", 
                     "Beta", "Max DD (%)", "Dist 20 EMA (%)", "Dist 50 EMA (%)", 
                     "System Action", "Book Qty", "Hold Qty"
                 ]
-                
-                st.dataframe(
-                    port_df[display_terminal_cols].style.apply(style_institutional_terminal, axis=None), 
-                    use_container_width=True
-                )
-                
-                # ফিন্যান্সিয়াল সামারি নোট
-                st.info(f"💡 **Institutional Insight:** আপনার পোর্টফোলিওর Weighted P/E হলো **{weighted_pe:.2f}** এবং গড় ROE হলো **{weighted_roe:.2f}%**। পোর্টফোলিও বেটা **{weighted_beta:.2f}** হওয়ায় এটি বাজারের চেয়ে {'বেশি উদ্বায়ী' if weighted_beta > 1 else 'কম ঝুঁকিপূর্ণ এবং ডিফেন্সিভ'}।")
+                st.dataframe(port_df[display_terminal_cols], use_container_width=True)
+                st.info(f"💡 **Institutional Insight:** আপনার পোর্টফোলিওর Weighted P/E হলো **{weighted_pe:.2f}** এবং গড় ROE হলো **{weighted_roe:.2f}%**।")
