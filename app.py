@@ -5,20 +5,18 @@ import plotly.express as px
 import random
 from datetime import datetime
 
-# ৫০০টি স্টকের মূল লিস্ট লোড
+# estate/stocks Watchlist load
 from stocks import SCREENER_WATCHLIST
 
-# [🔗 কানেকশন লেয়ার]: core ফোল্ডার থেকে আলাদা করা ডিজাইন ও ব্যাকএন্ড ইঞ্জিন ইম্পোর্ট
+# [🔗 কানেকশন লেয়ার]
 from core.styles import apply_terminal_theme, render_branding_header, render_terminal_footer
 from core.engine import calculate_indian_market_charges, analyze_stock_advanced
 
-# ১. সিস্টেম থিম অ্যাপ্লাই করা হলো (UI Layer Link)
+# ১. থিম ও হেডার অ্যাপ্লাই
 apply_terminal_theme()
-
-# ২. ব্র্যান্ডিং হেডার রেন্ডার (UI Layer Link)
 render_branding_header()
 
-# ৩. ইন্টারনাল সেশন ডাটাবেস হ্যান্ডলার
+# ২. ইন্টারনাল সেশন ডাটাবেস
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = pd.DataFrame(columns=[
         "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
@@ -29,7 +27,7 @@ master_df = st.session_state.portfolio_data_store
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
 closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
-# ৪. সাইডবার নেভিগেশন ও ফান্ড ম্যানেজার উইজডম কোটস
+# ৩. সাইডবার নেভিগেশন
 st.sidebar.title("🦅 Alpha Controls")
 st.sidebar.write("`⚡ Modular Architecture v4.0`")
 st.sidebar.markdown("---")
@@ -55,15 +53,13 @@ quotes = [
 st.sidebar.warning(random.choice(quotes))
 
 # =========================================================================
-# 🗺️ CONTROLLER ROUTING ENGINE (মেনু অনুযায়ী পেজ এবং লাইভ ডেটা ম্যাপার)
+# 🗺️ CONTROLLER ROUTING ENGINE
 # =========================================================================
 
-# --- পেজ ১: লাইভ স্ক্রেনার ---
 if menu_selection == "🔍 Live Screener Core":
     st.subheader("🦅 Factor Flow Screener System")
     min_sales = st.slider("Min Sales Growth (%)", 0.0, 100.0, 15.0)
     min_roe = st.slider("Min ROE (%)", 0.0, 100.0, 15.0)
-    
     col_s1, col_s2 = st.columns(2)
     max_pe = col_s1.number_input("Max P/E Ratio", 0.0, 200.0, 40.0)
     min_mcap = col_s2.number_input("Min Market Cap (Cr)", 0.0, 10000.0, 500.0)
@@ -73,7 +69,7 @@ if menu_selection == "🔍 Live Screener Core":
         results = []
         for index, ticker in enumerate(SCREENER_WATCHLIST[:20]):
             progress.progress((index + 1) / 20)
-            res = analyze_stock_advanced(ticker) # ইঞ্জিন কল
+            res = analyze_stock_advanced(ticker)
             if res:
                 if res["Sales Growth (%)"] >= min_sales and res["ROE (%)"] >= min_roe and res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe):
                     results.append(res)
@@ -81,7 +77,6 @@ if menu_selection == "🔍 Live Screener Core":
         if results:
             st.dataframe(pd.DataFrame(results)[["Stock", "CMP (₹)", "P/E Ratio", "ROE (%)", "System Action"]], use_container_width=True)
 
-# --- পেজ ২: অর্ডার এক্সিকিউশন প্যানেল ---
 elif menu_selection == "📥 Order Desk (Buy/Sell)":
     st.subheader("⚡ High-Speed Execution Matrix")
     trade_type = st.radio("Execute Type:", ["🛒 BUY (Add / Top-up)", "💰 SELL (Reduce/Exit)"], horizontal=True)
@@ -100,7 +95,7 @@ elif menu_selection == "📥 Order Desk (Buy/Sell)":
             
         if st.form_submit_button("🔥 Fire Transaction", use_container_width=True) and stock_name and stock_name != "No Holding":
             if "BUY" in trade_type:
-                b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True) # ইঞ্জিন কল
+                b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
                 if stock_name in master_df[(master_df['Stock'] == stock_name) & (master_df['Status'] == 'ACTIVE')]['Stock'].values:
                     idx = master_df[(master_df['Stock'] == stock_name) & (master_df['Status'] == 'ACTIVE')].index[0]
                     master_df.loc[idx, ['Buy Price', 'Quantity', 'Buy Date', 'Buy Charges']] = [
@@ -120,7 +115,7 @@ elif menu_selection == "📥 Order Desk (Buy/Sell)":
                 b_date = master_df.loc[idx, 'Buy Date']
                 b_charges = float(master_df.loc[idx, 'Buy Charges'])
                 
-                s_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=False) # ইঞ্জিন কল
+                s_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=False)
                 allocated_buy_charge = b_charges * (input_qty / old_qty)
                 realized_pnl = ((input_price - buy_p) * input_qty) - (allocated_buy_charge + s_charges)
                 
@@ -135,7 +130,6 @@ elif menu_selection == "📥 Order Desk (Buy/Sell)":
                 st.success(f"🚨 Position Liquidated! Sell Tax: ₹{s_charges}")
                 st.rerun()
 
-# --- পেজ ৩: পোর্টফোলিও ট্র্যাকার গ্রিড ---
 elif menu_selection == "📋 Portfolio Tracker Grid":
     st.subheader("📋 Core Running Positions")
     if active_portfolio.empty:
@@ -147,7 +141,6 @@ elif menu_selection == "📋 Portfolio Tracker Grid":
             if port_results:
                 st.dataframe(pd.DataFrame(port_results)[["Stock", "Qty", "Avg Buy (₹)", "CMP (₹)", "Invested (₹)", "Current Value (₹)", "Net P&L (₹)", "Net Return (%)", "System Action"]], use_container_width=True)
 
-# --- পেজ ৪: ক্যাপিটাল অ্যান্ড রিস্ক অ্যানালিসিস ড্যাশবোর্ড ---
 elif menu_selection == "📊 Capital & Risk Analytics":
     st.subheader("📊 Quant Asset Risk Dashboard")
     if active_portfolio.empty:
@@ -170,14 +163,49 @@ elif menu_selection == "📊 Capital & Risk Analytics":
                 st.plotly_chart(px.pie(port_df, values="Current Value (₹)", names="Stock", hole=0.4, color_discrete_sequence=px.colors.sequential.Tealgrn), use_container_width=True)
                 st.plotly_chart(px.bar(port_df, x="Stock", y="Max DD (%)", color="Max DD (%)", color_continuous_scale="Reds_r"), use_container_width=True)
 
-# --- পেজ ৫: ক্লোজড ট্রেইড হিস্ট্রি লেজার ---
+# =========================================================================
+# MENU 5: CLOSED LEDGER HISTORY (উইথ ডেটা এক্সপোর্ট/ডাউনলোড বাটন)
+# =========================================================================
 elif menu_selection == "📜 Closed Ledger History":
     st.subheader("📜 Realized Alpha Vault Ledger")
+    
+    # --- ডেটা এক্সপোর্ট সেকশন (গ্লোয়িং বাটন মেকানিজম) ---
+    st.markdown("### 📥 Export & Data Access Portal")
+    col_d1, col_d2 = st.columns(2)
+    
+    # অ্যাক্টিভ পোর্টফোলিও এক্সপোর্ট বাটন
+    if not active_portfolio.empty:
+        active_csv = active_portfolio[["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges"]].to_csv(index=False).encode('utf-8')
+        col_d1.download_button(
+            label="📥 Download Active Positions (CSV)",
+            data=active_csv,
+            file_name=f"active_portfolio_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    else:
+        col_d1.info("No active positions to export.")
+        
+    # ক্লোজড লেজার এক্সপোর্ট বাটন
+    if not closed_portfolio.empty:
+        closed_csv = closed_portfolio[["Stock", "Quantity", "Buy Price", "Buy Charges", "Sell Price", "Sell Charges", "Realized P&L"]].to_csv(index=False).encode('utf-8')
+        col_d2.download_button(
+            label="📥 Download Closed Ledger History (CSV)",
+            data=closed_csv,
+            file_name=f"closed_ledger_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    else:
+        col_d2.info("No closed history to export.")
+        
+    st.markdown("---")
+    
     if closed_portfolio.empty:
         st.info("💡 Closed history database clean.")
     else:
         st.metric("Net Closed Profit (Post-Tax Pure Cash)", f"₹{closed_portfolio['Realized P&L'].sum():,.2f}")
         st.dataframe(closed_portfolio[["Stock", "Quantity", "Buy Price", "Buy Charges", "Sell Price", "Sell Charges", "Realized P&L"]], use_container_width=True)
 
-# ৫. প্রফেশনাল ব্রোকার ফুটার রেন্ডার (UI Layer Link)
+# ফুটার রেন্ডার
 render_terminal_footer()
