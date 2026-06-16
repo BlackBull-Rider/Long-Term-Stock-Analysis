@@ -110,9 +110,10 @@ if st.button("🔄 Scan & Track Portfolio Live"):
                     return 'background-color: #2ecc71; color: white; font-weight: bold;'
                 return 'background-color: #2c3e50; color: #ecf0f1;'
 
-            st.dataframe(
-                final_df.style.applymap(highlight_action, subset=['System Action']),
+                        st.dataframe(
+                final_df.style.map(highlight_action, subset=['System Action']),
                 use_container_width=True
+
             )
             st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড আপডেট করা হয়েছে!")
         else:
