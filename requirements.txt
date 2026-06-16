@@ -1,4 +1,5 @@
 yfinance
 pandas
 plotly
+gspread
 st-gsheets-connection
