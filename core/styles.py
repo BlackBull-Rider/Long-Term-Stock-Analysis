@@ -2,7 +2,7 @@
 import streamlit as st
 
 def apply_terminal_theme():
-    """পুরো অ্যাপ্লিকেশনের জন্য নিয়ন সাইবার-ডার্ক সিএসএস থিম"""
+    """পুরো অ্যাপ্লিকেশনের জন্য নিয়ন সাইবার-ডার্ক সিএসএস থিম এবং বড় স্টাইলিশ মেনু বাটন"""
     st.markdown("""
         <style>
         /* মেইন রেসপনসিভ ব্যাকগ্রাউন্ড */
@@ -11,11 +11,69 @@ def apply_terminal_theme():
             color: #d1d7e0;
             font-family: 'Inter', sans-serif;
         }
+        
         /* সাইডবার প্যানেল ডিজাইন */
         [data-testid="stSidebar"] {
             background-color: #0b0e1a;
             border-right: 2px solid #161f38;
         }
+
+        /* =========================================================================
+           🚀 আল্ট্রা-স্টাইলিশ ও বড় সাইডবার রেডিও মেনু বাটন ডিজাইন (মোবাইল অপ্টিমাইজড)
+           ========================================================================= */
+        /* ডিফল্ট রেডিও লিস্টের গ্যাপ বাড়ানো */
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+            gap: 14px !important;
+            padding-top: 10px;
+        }
+        
+        /* প্রতিটা মেনু অপশনকে একটি বড় ৩ডি ব্লকে রূপান্তর করা */
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+            background-color: #121829 !important;
+            padding: 16px 20px !important;
+            border-radius: 10px !important;
+            border: 1px solid #1e294b !important;
+            color: #a0aec0 !important;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            width: 100% !important;
+            min-height: 55px !important;
+            display: flex !important;
+            align-items: center !important;
+            transition: all 0.25s ease-in-out !out;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3) !important;
+            cursor: pointer !important;
+        }
+
+        /* গোল রেডিও বাটন সার্কেলটি হাইড করা (প্রফেশনাল লুকের জন্য) */
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+            margin-left: 0px !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label div:first-child {
+            display: none !important;
+        }
+
+        /* মাউস নিয়ে গেলে বা আঙুল দিয়ে টাচ করলে হোভার এফেক্ট */
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover {
+            border-color: #00e5ff !important;
+            color: #00e5ff !important;
+            background-color: #16223f !important;
+            box-shadow: 0px 0px 12px rgba(0, 229, 255, 0.2) !important;
+            transform: translateY(-2px);
+        }
+
+        /* 🟢 অ্যাক্টিভ/সিলেক্টেড মেনু বাটনের রাজকীয় নিয়ন গ্লো এফেক্ট */
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] [data-checked="true"] label {
+            background: linear-gradient(135deg, #142834 0%, #0d2e27 100%) !important;
+            border: 2px solid #00e676 !important;
+            color: #00e676 !important;
+            box-shadow: 0px 0px 18px rgba(0, 230, 118, 0.35) !important;
+            font-weight: 800 !important;
+            text-shadow: 0 0 5px rgba(0, 230, 118, 0.3);
+        }
+
+        /* ========================================================================= */
+
         /* গ্লোয়িং প্রফেশনাল ফান্ড ম্যানেজার হেডার ব্যানার */
         .header-banner {
             background: linear-gradient(135deg, #0d1b2a 0%, #1b4332 100%);
@@ -40,7 +98,8 @@ def apply_terminal_theme():
             font-weight: 600;
             letter-spacing: 1px;
         }
-        /* হোভার এফেক্ট সহ ৩ডি মেট্রিক কার্ড */
+        
+        /* হোভার এফেক্ট সহ ৩ডি মেট্রিকカード */
         div[data-testid="stMetric"] {
             background-color: #0f1424;
             padding: 18px;
@@ -55,6 +114,7 @@ def apply_terminal_theme():
             border-color: #00e676;
             box-shadow: 0px 0px 15px rgba(0, 230, 118, 0.3);
         }
+        
         /* ঝাক্কাস টার্মিনাল ফুটার */
         .footer-terminal {
             background-color: #0b0e1a;
@@ -70,7 +130,7 @@ def apply_terminal_theme():
     """, unsafe_allow_html=True)
 
 def render_branding_header():
-    """প্রধান ব্র্যান্ডিং প্যানেল"""
+    """প্রধানブランドীঙ প্যানেল"""
     st.markdown("""
         <div class="header-banner">
             <div class="header-title">🟢 GREEN BULL RIDER</div>
