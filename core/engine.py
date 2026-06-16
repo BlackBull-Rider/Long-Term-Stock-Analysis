@@ -5,7 +5,6 @@ import numpy as np
 import streamlit as st
 
 def calculate_indian_market_charges(price, qty, is_buy=True):
-    """ইন্ডিয়ান মার্কেটের ট্যাক্স ও ব্রোকারেজ ক্যালকুলেটর"""
     turnover = price * qty
     if turnover <= 0: return 0.0
     brokerage = min(20.0, turnover * 0.0005) if turnover > 10000 else 0.0
@@ -18,11 +17,9 @@ def calculate_indian_market_charges(price, qty, is_buy=True):
 
 @st.cache_data(ttl=3600)  
 def run_massive_scan_engine(ticker_list, invest_horizon, expected_return):
-    """৫০০০ স্টকের বাল্ক ডাটা ক্যাশিং এবং ভেক্টরাইজড এনালাইসিস ইঞ্জিন"""
     formatted_tickers = [f"{t}.NS" if not t.endswith(".NS") else t for t in ticker_list]
     
     try:
-        # ১ ক্লিকে পুরো ৫০০০ স্টকের ২ বছরের হিস্ট্রি একসাথে ডাউনলোড (No Loop)
         data = yf.download(
             tickers=formatted_tickers, 
             period="2y", 
@@ -43,7 +40,6 @@ def run_massive_scan_engine(ticker_list, invest_horizon, expected_return):
                 highs = tick_data['High']
                 current_price = float(closes.iloc[-1])
                 
-                # হাই-স্পিড ভেক্টরাইজড ইন্ডিকেটর
                 ema50 = closes.ewm(span=50, adjust=False).mean().iloc[-1]
                 ema200 = closes.ewm(span=200, adjust=False).mean().iloc[-1]
                 two_y_high = highs.max()
@@ -51,7 +47,6 @@ def run_massive_scan_engine(ticker_list, invest_horizon, expected_return):
                 max_drawdown = ((current_price - two_y_high) / two_y_high) * 100
                 actual_ema200_dist = ((current_price - ema200) / ema200) * 100
                 
-                # প্রফেশনাল ওনারশিপ ও ফাইনান্সিয়াল ক্যাশ হ্যাশ ম্যাপার (৫০০০ স্টকের জন্য)
                 seed = sum(ord(c) for c in ticker)
                 np.random.seed(seed)
                 pe_ratio = round(np.random.uniform(12, 85), 1)
@@ -62,7 +57,6 @@ def run_massive_scan_engine(ticker_list, invest_horizon, expected_return):
                 institution = round(np.random.uniform(10, 45), 1)
                 dividend = round(np.random.uniform(0, 4), 2)
                 
-                # ডাইনামিক ভ্যালুয়েশন ইঞ্জিন [SOSTA / MEHNGA]
                 valuation_tag = "FAIR PRICE"
                 if (pe_ratio < 25) or (roe > expected_return and sales_growth > 14):
                     valuation_tag = "🔥 SOSTA / UNDERVALUED"
@@ -88,7 +82,6 @@ def run_massive_scan_engine(ticker_list, invest_horizon, expected_return):
 
 @st.cache_data(ttl=1800)
 def scan_ipo_fresh_listings(ticker_list):
-    """নতুন লিস্টিং ও আইপিও স্টকের জন্য স্মার্ট মানি ভলিউম ব্রেকআউট ইঞ্জিন"""
     formatted_tickers = [f"{t}.NS" if not t.endswith(".NS") else t for t in ticker_list]
     ipo_results = []
     
@@ -98,7 +91,7 @@ def scan_ipo_fresh_listings(ticker_list):
             try:
                 tick_data = data[ticker] if len(formatted_tickers) > 1 else data
                 tick_data = tick_data.dropna(subset=['Close'])
-                if tick_data.empty or len(tick_data) > 130: continue # ১০০-১২০ দিনের বেশি হলে ওটা ওল্ড স্টক
+                if tick_data.empty or len(tick_data) > 130: continue
                 
                 closes = tick_data['Close']
                 lows = tick_data['Low']
@@ -109,7 +102,6 @@ def scan_ipo_fresh_listings(ticker_list):
                 avg_vol = vols.mean()
                 last_vol = vols.iloc[-1]
                 
-                # ৩ গুণের বেশি ভলিউম স্পাইক এবং লিস্টিং বেসের ওপরে ট্রেড
                 if last_vol > (avg_vol * 2.5) and current_price > (listing_low * 1.05):
                     raw_name = ticker.replace(".NS", "")
                     ipo_results.append({
@@ -124,7 +116,6 @@ def scan_ipo_fresh_listings(ticker_list):
     except: return []
 
 def analyze_stock_advanced(ticker, buy_price=None, qty=None, buy_charges=0.0, invest_horizon=1.5, expected_return=30.0):
-    """পোর্টফোলিও লাইভ ট্র্যাকিং ব্লকের জন্য রিয়েল-টাইম এপিআই ফলব্যাক"""
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
         stock = yf.Ticker(ticker)
