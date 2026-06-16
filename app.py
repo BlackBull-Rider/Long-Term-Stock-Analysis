@@ -2,21 +2,18 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import random
 from datetime import datetime
 
-# stocks Watchlist load
+# Local Data Components Imports
 from stocks import SCREENER_WATCHLIST
-
-# [🔗 কানেকশন লেয়ার]
 from core.styles import apply_terminal_theme, render_branding_header, render_terminal_footer
-from core.engine import calculate_indian_market_charges, analyze_stock_advanced, run_massive_scan_engine, scan_ipo_fresh_listings
+from core.engine import calculate_indian_market_charges, run_massive_scan_engine, scan_ipo_fresh_listings
 
-# ১. থিম ও হেডার অ্যাপ্লাই
+# ১. থিম ও সিএসএস লাইভ লোড
 apply_terminal_theme()
 render_branding_header()
 
-# ২. ইন্টারনাল সেশন ডাটাবেস
+# ২. ড্যাশবোর্ড স্টেট প্রিপারেশন
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = pd.DataFrame(columns=[
         "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
@@ -25,32 +22,31 @@ if "portfolio_data_store" not in st.session_state:
 
 master_df = st.session_state.portfolio_data_store
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
-closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
-# ৩. সাইডবার নেভিগেশন
+# ৩. কন্ট্রোল প্যানেল সাইডবার
 st.sidebar.title("🦅 Alpha Controls")
-st.sidebar.write("`⚡ Batch Storm Core v8.0`")
+st.sidebar.write("`⚡ Operational Safe-Mode: ON`")
 st.sidebar.markdown("---")
 
 menu_selection = st.sidebar.radio(
     "TERMINAL NAVIGATION",
     [
         "🔍 Live Screener Core",
+        "🚀 Monster Moat Hunt",
         "🚀 IPO Breakout Monitor",
         "📥 Order Desk (Buy/Sell)",
         "📋 Portfolio Tracker Grid",
-        "📊 Capital & Risk Analytics",
-        "📜 Closed Ledger History"
+        "📊 Capital & Risk Analytics"
     ]
 )
 
 # =========================================================================
-# 🗺️ CONTROLLER ROUTING ENGINE
+# MODULE RE-ROUTING ENGINE
 # =========================================================================
 
 if menu_selection == "🔍 Live Screener Core":
     st.subheader("🦅 High-Speed Batch Institutional Screener")
-    st.write("Holding Term এবং Expected Return দিন; বাল্ক ডেটা ইঞ্জিন এক ঝটকায় ৫০০০ স্টক প্রসেস করবে।")
+    st.write("টার্গেট রিটার্নের ওপর ভিত্তি করে সিস্টেম অটোমেটিকলি কোয়ালিটি ফিল্টার রেশিও সেট করবে।")
     st.markdown("---")
     
     st.markdown("#### 🎯 Macro Investment Goals")
@@ -58,7 +54,12 @@ if menu_selection == "🔍 Live Screener Core":
     invest_horizon = col_g1.number_input("Investment Holding Term (Years)", min_value=0.5, max_value=15.0, value=2.0, step=0.5)
     expected_return = col_g2.number_input("Minimum Target Return Expected (% p.a.)", min_value=10.0, max_value=150.0, value=25.0, step=5.0)
     
-    if expected_return >= 40:
+    # 🚀 সম্পূর্ণ ডাইনামিক স্ল্যাব লজিক (৫০% থেকে ১৫০% পর্যন্ত আলাদা কড়া ভ্যালু আসবে)
+    if expected_return >= 100:
+        calc_sales, calc_roe, calc_pe, calc_ema_dist = 30.0, 35.0, 25.0, 4.0
+    elif expected_return >= 60:
+        calc_sales, calc_roe, calc_pe, calc_ema_dist = 22.0, 26.0, 30.0, 3.0
+    elif expected_return >= 40:
         calc_sales, calc_roe, calc_pe, calc_ema_dist = 18.0, 22.0, 35.0, 2.0
     elif expected_return >= 25:
         calc_sales, calc_roe, calc_pe, calc_ema_dist = 12.0, 15.0, 50.0, 1.0
@@ -77,23 +78,19 @@ if menu_selection == "🔍 Live Screener Core":
     max_pe = col_f3.number_input("Max P/E Ratio (0 for Any)", min_value=0.0, max_value=300.0, value=float(calc_pe), step=1.0)
     min_mcap = col_f4.number_input("Min Market Cap (Cr)", min_value=0.0, max_value=500000.0, value=float(calc_mcap), step=100.0)
 
-    st.markdown("#### 🏢 Institutional Ownership & Tech Setup (Editable)")
+    st.markdown("#### 🏢 Institutional Ownership & Tech Setup")
     col_o1, col_o2 = st.columns(2)
     min_promoter = col_o1.number_input("Min Promoter Holding (%)", min_value=0.0, max_value=100.0, value=float(calc_promoter), step=1.0)
     min_ema200_dist = col_o2.number_input("Min Distance from 200 EMA (%)", min_value=-50.0, max_value=100.0, value=float(calc_ema_dist), step=0.5)
     
-    require_golden_cross = st.selectbox("Trend Momentum (50 EMA > 200 EMA)", ["REQUIRED (Bullish Structure)", "ANY STRUCTURE"], index=0)
-    
     st.markdown("---")
     
-    if st.button("⚡ EXECUTE FLASH BATCH STORM SCAN (3 SEC)", use_container_width=True):
+    if st.button("⚡ EXECUTE COMPLIANT BATCH SCAN", use_container_width=True):
         status_box = st.empty()
-        status_box.info("🌪️ Bulk Tunnel Active: Syncing with NSE Market Segment via Batch Download...")
+        status_box.info("🌪️ Fetching 7-Year History from Safe Cache Replica...")
         
         expanded_watchlist = SCREENER_WATCHLIST * 10
         raw_results = run_massive_scan_engine(expanded_watchlist, invest_horizon, expected_return)
-        
-        status_box.success("🔥 Packets Retrieved from Exchange! Sorting through Vector Matrix...")
         
         filtered_results = []
         for res in raw_results:
@@ -109,94 +106,55 @@ if menu_selection == "🔍 Live Screener Core":
                     filtered_results.append(res)
                     
         status_box.empty()
-        
         if filtered_results:
-            st.success(f"🎯 Scan Complete! Filtered out {len(filtered_results)} High-Alpha assets from 5,000 tickers.")
+            st.success(f"🎯 Scan Complete! Found {len(filtered_results)} institutional setups.")
             df_display = pd.DataFrame(filtered_results)
-            final_cols = ["Stock", "CMP (₹)", "P/E Ratio", "ROE (%)", "Promoter (%)", "Institutions (%)", "Dividend (%)", "EMA200 Dist (%)", "System Action"]
+            
+            # চার্ট সেটআপ কলামটি ২ নম্বরে পজিশন করা হলো
+            final_cols = ["Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", "Promoter (%)", "Max DD (%)", "EMA200 Dist (%)", "System Action"]
             st.dataframe(df_display[final_cols], use_container_width=True)
+
+elif menu_selection == "🚀 Monster Moat Hunt":
+    st.subheader("🔥 Monster Moat Catalyst Scanner (1000% Multibagger Hunt)")
+    st.write("ব্র্যান্ড ভ্যালু, কাস্টমার রিভিউ এবং প্রমোশনের অদৃশ্য শক্তির কোয়ালিটেটিভ স্ক্রেনার।")
+    st.markdown("---")
+    
+    col_m1, col_m2 = st.columns(2)
+    min_gross_margin = col_m1.number_input("Minimum Gross Margin % (Brand Premium)", min_value=20.0, max_value=90.0, value=45.0, step=1.0)
+    min_inventory_speed = col_m2.number_input("Minimum Inventory Speed (Consumer Demand)", min_value=2.0, max_value=25.0, value=6.0, step=0.5)
+    
+    if st.button("🚀 EXECUTE 1000% MONSTER MOAT SCAN", use_container_width=True):
+        status = st.empty()
+        status.warning("🌪️ Compiling 7-Year Chart Setups + Brand Moat Matrix...")
+        
+        expanded_watchlist = SCREENER_WATCHLIST * 10
+        raw_results = run_massive_scan_engine(expanded_watchlist, invest_horizon=2.0, expected_return=50.0)
+        
+        moat_hits = []
+        for res in raw_results:
+            if not res: continue
+            if res["Gross Margin (%)"] >= min_gross_margin and res["Inventory Speed (x)"] >= min_inventory_speed:
+                if res["ROE (%)"] >= 20.0:  # হাই আলফা ফিল্টার
+                    moat_hits.append(res)
+                    
+        status.empty()
+        if moat_hits:
+            st.success(f"🔥 BOOM! Found {len(moat_hits)} Mega Monopoly Brands.")
+            df_moat = pd.DataFrame(moat_hits)
+            moat_cols = ["Stock", "Chart Setup", "CMP (₹)", "Gross Margin (%)", "Inventory Speed (x)", "Marketing Efficiency (x)", "ROE (%)", "System Action"]
+            st.dataframe(df_moat[moat_cols], use_container_width=True)
         else:
-            st.warning("No assets matched your exact config. Try easing limits.")
+            st.warning("No asset found matching this extreme level of pricing power.")
 
 elif menu_selection == "🚀 IPO Breakout Monitor":
     st.subheader("🚀 Fresh Listings & IPO Breakout Matrix")
-    st.write("যেসব নতুন স্টক গত কয়েক মাস বা কয়েক দিনে লিস্ট হয়েছে এবং বড় প্লেয়াররা সেখানে এন্ট্রি নিচ্ছে।")
-    st.markdown("---")
-    
     if st.button("🔥 Scan IPO Fresh Liquid Assets", use_container_width=True):
-        status = st.empty()
-        status.info("🔍 Scanning recent IPO brackets for Volume Surges...")
-        
         ipo_hits = scan_ipo_fresh_listings(SCREENER_WATCHLIST[:15])
-        status.empty()
-        
-        if ipo_hits:
-            st.success(f"⚡ High-Alpha IPO Formations Identified!")
-            st.dataframe(pd.DataFrame(ipo_hits), use_container_width=True)
-        else:
-            st.info("No fresh listing is currently offering an institutional volume spike breakout.")
+        if ipo_hits: st.dataframe(pd.DataFrame(ipo_hits), use_container_width=True)
+        else: st.info("No active IPO breakout structures identified today.")
 
-elif menu_selection == "📥 Order Desk (Buy/Sell)":
-    st.subheader("⚡ High-Speed Execution Matrix")
-    trade_type = st.radio("Execute Type:", ["🛒 BUY (Add / Top-up)", "💰 SELL (Reduce/Exit)"], horizontal=True)
-    with st.form("portfolio_form", clear_on_submit=True):
-        if "BUY" in trade_type:
-            stock_name = st.selectbox("Select Asset to ACCUMULATE", options=sorted(SCREENER_WATCHLIST), index=None)
-            input_price = st.number_input("Price (₹)", min_value=0.1, step=0.1)
-            input_qty = st.number_input("Volume/Qty", min_value=1, step=1)
-            trade_date = st.date_input("Date", datetime.now())
-        else:
-            stock_name = st.selectbox("Select Asset to LIQUIDATE", options=sorted(active_portfolio["Stock"].unique()) if not active_portfolio.empty else ["No Holding"], index=None)
-            input_price = st.number_input("Price (₹)", min_value=0.1, step=0.1)
-            input_qty = st.number_input("Volume/Qty", min_value=1, step=1)
-            trade_date = st.date_input("Date", datetime.now())
-            
-        if st.form_submit_button("🔥 Fire Transaction", use_container_width=True) and stock_name and stock_name != "No Holding":
-            if "BUY" in trade_type:
-                b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
-                clean_name = stock_name.split(" [")[0] if " [" in stock_name else stock_name
-                if clean_name in master_df[(master_df['Status'] == 'ACTIVE')]['Stock'].values:
-                    idx = master_df[(master_df['Stock'] == clean_name) & (master_df['Status'] == 'ACTIVE')].index[0]
-                    master_df.loc[idx, ['Buy Price', 'Quantity', 'Buy Date', 'Buy Charges']] = [
-                        ((float(master_df.loc[idx, 'Buy Price']) * int(master_df.loc[idx, 'Quantity'])) + (input_price * input_qty)) / (int(master_df.loc[idx, 'Quantity']) + input_qty),
-                        int(master_df.loc[idx, 'Quantity']) + input_qty, str(trade_date), float(master_df.loc[idx, 'Buy Charges']) + b_charges
-                    ]
-                else:
-                    new_row = pd.DataFrame([{"Stock": clean_name, "Buy Price": input_price, "Quantity": input_qty, "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"}])
-                    master_df = pd.concat([master_df, new_row], ignore_index=True)
-                st.session_state.portfolio_data_store = master_df
-                st.success(f"⚡ Order Logged! Taxes: ₹{b_charges}")
-                st.rerun()
-
-elif menu_selection == "📋 Portfolio Tracker Grid":
-    st.subheader("📋 Core Running Positions")
-    if active_portfolio.empty: st.info("💡 Portfolio vacant.")
-    else:
-        with st.spinner("Processing..."):
-            port_results = [analyze_stock_advanced(row["Stock"], float(row["Buy Price"]), int(row["Quantity"]), float(row["Buy Charges"])) for _, row in active_portfolio.iterrows()]
-            st.dataframe(pd.DataFrame([p for p in port_results if p])[["Stock", "Qty", "Avg Buy (₹)", "CMP (₹)", "Invested (₹)", "Current Value (₹)", "Net P&L (₹)", "Net Return (%)"]], use_container_width=True)
-
-elif menu_selection == "📊 Capital & Risk Analytics":
-    st.subheader("📊 Quant Asset Risk Dashboard")
-    if active_portfolio.empty: st.info("💡 Analytics Offline.")
-    else:
-        port_results = [analyze_stock_advanced(row["Stock"], float(row["Buy Price"]), int(row["Quantity"]), float(row["Buy Charges"])) for _, row in active_portfolio.iterrows()]
-        port_df = pd.DataFrame([p for p in port_results if p])
-        st.metric("Total Deployed Capital", f"₹{port_df['Invested (₹)'].sum():,.2f}")
-        st.plotly_chart(px.pie(port_df, values="Current Value (₹)", names="Raw_Stock", hole=0.4, color_discrete_sequence=px.colors.sequential.Tealgrn), use_container_width=True)
-
-elif menu_selection == "📜 Closed Ledger History":
-    st.subheader("📜 Realized Alpha Vault Ledger")
-    st.markdown("### 📥 Export & Data Access Portal")
-    col_d1, col_d2 = st.columns(2)
-    if not active_portfolio.empty:
-        active_csv = active_portfolio[["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges"]].to_csv(index=False).encode('utf-8')
-        col_d1.download_button(label="📥 Download Active Positions (CSV)", data=active_csv, file_name=f"active_portfolio_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv", use_container_width=True)
-    if not closed_portfolio.empty:
-        closed_csv = closed_portfolio[["Stock", "Quantity", "Buy Price", "Buy Charges", "Sell Price", "Sell Charges", "Realized P&L"]].to_csv(index=False).encode('utf-8')
-        col_d2.download_button(label="📥 Download Closed Ledger History (CSV)", data=closed_csv, file_name=f"closed_ledger_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv", use_container_width=True)
-    st.markdown("---")
-    if closed_portfolio.empty: st.info("💡 History clean.")
-    else: st.dataframe(closed_portfolio[["Stock", "Quantity", "Buy Price", "Realized P&L"]], use_container_width=True)
+elif menu_selection == "📥 Order Desk (Buy/Sell)" or menu_selection == "📋 Portfolio Tracker Grid" or menu_selection == "📊 Capital & Risk Analytics":
+    st.subheader("📡 Operational Layer")
+    st.info("System is running in safe read-only screener mode. Open port to activate transactions.")
 
 render_terminal_footer()
