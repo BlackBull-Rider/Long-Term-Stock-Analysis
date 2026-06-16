@@ -9,10 +9,9 @@ from streamlit_gsheets import GSheetsConnection
 # বাইরের ফাইল stocks.py থেকে ৫০০টি স্টকের লিস্ট ইম্পোর্ট
 from stocks import SCREENER_WATCHLIST
 
-# পেজ কনফিগারেশন (Bloomberg Dark theme look)
+# পেজ কনফিগারেশন
 st.set_page_config(page_title="Alpha Institutional Terminal", layout="wide", initial_sidebar_state="collapsed")
 
-# কাস্টম সিএসএস এরর ফিক্স করা হয়েছে (unsafe_allow_html=True ব্যবহার করে)
 st.markdown("""
     <style>
     .metric-card {
@@ -29,27 +28,36 @@ st.markdown("""
 sheet_url = None
 try:
     sheet_url = st.secrets["public_gsheets_url"]
-    # লিংকের শেষের ড্রাইভ ফরম্যাট ক্লিন করার লজিক
     if sheet_url and "?" in sheet_url:
         sheet_url = sheet_url.split("?")[0]
 except:
     st.error("🚨 .streamlit/secrets.toml ফাইলে গুগল শিটের লিংক পাওয়া যায়নি!")
 
+# ডেটা লোড করার সময় কলাম স্ট্রিক্টনেস দূর করার ব্যবস্থা
 def load_portfolio_data():
     if not sheet_url:
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         df = conn.read(spreadsheet=sheet_url, ttl=0)
-        if df.empty or "Stock" not in df.columns:
+        
+        if df.empty or len(df.columns) < 4:
             return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
-        return df
+            
+        # কলামের নাম স্ট্যান্ডার্ড ফরম্যাটে আনা
+        df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
+        df['Stock'] = df['Stock'].astype(str).str.upper().str.strip()
+        df['Buy Price'] = pd.to_numeric(df['Buy Price'], errors='coerce')
+        df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce')
+        return df.dropna(subset=["Stock"])
     except:
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
 
 def save_portfolio_data(df):
     if sheet_url:
         try:
+            # কলামের নাম পরিষ্কার করে শিটে পাঠানো
+            df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
             conn = st.connection("gsheets", type=GSheetsConnection)
             conn.update(spreadsheet=sheet_url, data=df)
             return True
@@ -59,7 +67,7 @@ def save_portfolio_data(df):
 
 portfolio_df = load_portfolio_data()
 
-# --- অ্যাডভান্সড ট্রেন্ড ও রিস্ক অ্যানালিসিস ইঞ্জিন ---
+# --- টেকনিক্যাল ও ফান্ডামেন্টাল অ্যানালিসিস ইঞ্জিন ---
 def analyze_stock_advanced(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
@@ -94,7 +102,7 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
         action = "🟢 STRONG BULL: HOLD"
         if current_price < ema_50: action = "🔴 TREND REVERSED: EXIT"
         elif current_price < ema_20: action = "🟠 MOMENTUM WEAK: BOOK 50%"
-        elif current_price >= twenty_w_high: action = "🔥 BREAKOUT: RE-INVEST"
+        elif current_price >= twenty_w_high: action = "🔥 RE-INVEST"
         
         data = {
             "Stock": ticker.replace(".NS", ""),
@@ -131,7 +139,7 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
 
 # --- নেভিগেশন ট্যাব ---
 st.title("🦅 Alpha Institutional Investment Terminal")
-tab1, tab2, tab3 = st.tabs(["🔍 Live Screener", "📥 Add Asset", "📊 Deep Portfolio Analysis"])
+tab1, tab2, tab3 = st.tabs(["🔍 Live Screener", "📥 Order Execution (Buy/Sell)", "📊 Deep Portfolio Analysis"])
 
 # TAB 1: SCREENER
 with tab1:
@@ -145,7 +153,7 @@ with tab1:
     if st.button("🔍 Execute Screen Scan"):
         progress = st.progress(0)
         results = []
-        for index, ticker in enumerate(SCREENER_WATCHLIST[:30]): # দ্রুত স্ক্যানের জন্য ৩০টি টপ স্টক
+        for index, ticker in enumerate(SCREENER_WATCHLIST[:30]):
             progress.progress((index + 1) / 30)
             res = analyze_stock_advanced(ticker)
             if res:
@@ -155,19 +163,68 @@ with tab1:
         if results:
             st.dataframe(pd.DataFrame(results)[["Stock", "CMP (₹)", "Market Cap (Cr)", "P/E Ratio", "ROE (%)", "Sales Growth (%)", "System Action"]], use_container_width=True)
 
-# TAB 2: ASSET INTAKE FORM
+# TAB 2: ORDER EXECUTION (BUY AND SELL ENGINE)
 with tab2:
-    st.header("📥 Asset Intake Form")
+    st.header("⚡ Live Order Execution Entry")
+    
+    # বাই নাকি সেল—সেটা সিলেক্ট করার রেডিও বাটন
+    trade_type = st.radio("অ্যাকশন সিলেক্ট করুন:", ["🛒 BUY (Add Positions)", "💰 SELL (Profit Booking / Exit)"], horizontal=True)
+    
     with st.form("portfolio_form", clear_on_submit=True):
         stock_name = st.selectbox("🔍 Select Stock", options=sorted(SCREENER_WATCHLIST), index=None)
-        buy_p = st.number_input("Buy Price (₹)", min_value=0.1)
-        quantity = st.number_input("Quantity", min_value=1)
-        buy_date = st.date_input("Date", datetime.now())
-        if st.form_submit_button("➕ Link to Database") and sheet_url and stock_name:
-            new_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": buy_p, "Quantity": quantity, "Date": str(buy_date)}])
-            if save_portfolio_data(pd.concat([portfolio_df, new_row], ignore_index=True)):
-                st.success("Asset Synergized with Cloud Database!")
-                st.rerun()
+        
+        if "BUY" in trade_type:
+            input_price = st.number_input("Buy Price (₹)", min_value=0.1, step=0.1)
+            input_qty = st.number_input("Quantity to Add", min_value=1, step=1)
+        else:
+            input_price = st.number_input("Selling Price (₹) [Optional]", min_value=0.0, step=0.1, value=0.0)
+            input_qty = st.number_input("Quantity to Reduce/Sell", min_value=1, step=1)
+            
+        trade_date = st.date_input("Execution Date", datetime.now())
+        submit_btn = st.form_submit_button("🚀 Execute Transaction & Update Sheet")
+        
+        if submit_btn and sheet_url and stock_name:
+            # কেস ১: নতুন পজিশন বাই করা
+            if "BUY" in trade_type:
+                # যদি স্টকটি আগে থেকেই শিটে থাকে, তবে ওয়েটেড অ্যাভারেজ ক্যালকুলেট হবে
+                if stock_name in portfolio_df['Stock'].values:
+                    existing_row = portfolio_df[portfolio_df['Stock'] == stock_name].iloc[0]
+                    old_qty = existing_row['Quantity']
+                    old_price = existing_row['Buy Price']
+                    
+                    new_qty = old_qty + input_qty
+                    new_price = ((old_price * old_qty) + (input_price * input_qty)) / new_qty
+                    
+                    portfolio_df.loc[portfolio_df['Stock'] == stock_name, ['Buy Price', 'Quantity', 'Date']] = [new_price, new_qty, str(trade_date)]
+                else:
+                    new_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": input_price, "Quantity": input_qty, "Date": str(trade_date)}])
+                    portfolio_df = pd.concat([portfolio_df, new_row], ignore_index=True)
+                
+                if save_portfolio_data(portfolio_df):
+                    st.success(f"🛒 {stock_name} সফলভাবে পোর্টফোলিওতে যোগ/টপ-আপ করা হয়েছে!")
+                    st.rerun()
+            
+            # কেস ২: পজিশন সেল করা (পার্শিয়াল বা ফুল এক্সিট)
+            else:
+                if stock_name in portfolio_df['Stock'].values:
+                    existing_row = portfolio_df[portfolio_df['Stock'] == stock_name].iloc[0]
+                    old_qty = existing_row['Quantity']
+                    
+                    if input_qty >= old_qty:
+                        # যদি কারেন্ট কোয়ান্টিটির সমান বা বেশি সেল করতে চায় -> ফুল এক্সিট (মুছে যাবে)
+                        portfolio_df = portfolio_df[portfolio_df['Stock'] != stock_name]
+                        msg = f"🚨 {stock_name} থেকে সম্পূর্ণ এক্সিট করা হয়েছে এবং শিট থেকে পজিশন মুছে দেওয়া হয়েছে!"
+                    else:
+                        # পার্শিয়াল প্রফিট বুকিং (কোয়ান্টিটি কমবে, বাই প্রাইস সেম থাকবে)
+                        new_qty = old_qty - input_qty
+                        portfolio_df.loc[portfolio_df['Stock'] == stock_name, 'Quantity'] = new_qty
+                        msg = f"💰 {stock_name} থেকে {input_qty} পিস প্রফিট বুক করা হয়েছে! বাকি রইল {new_qty} পিস।"
+                    
+                    if save_portfolio_data(portfolio_df):
+                        st.success(msg)
+                        st.rerun()
+                else:
+                    st.error("⚠️ এই স্টকটি আপনার পোর্টফোলিওতেই নেই! তাই সেল করা সম্ভব নয়।")
 
 # TAB 3: DEEP PORTFOLIO ANALYSIS
 with tab3:
