@@ -1,5 +1,5 @@
 yfinance
 pandas
+numpy
 plotly
-gspread
-st-gsheets-connection
+requests
