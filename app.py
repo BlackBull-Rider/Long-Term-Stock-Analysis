@@ -104,7 +104,6 @@ if menu_selection == "🔍 LIVE SCREENER CORE":
             df_final = pd.DataFrame(filtered_results)[ALL_METRICS_COLS]
             st.dataframe(df_final, use_container_width=True)
             
-            # 📥 DATA DOWNLOAD EXPORT PORTAL (Core Screener)
             st.markdown("---")
             csv_data = df_final.to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -140,7 +139,6 @@ elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
             df_moat_final = pd.DataFrame(moat_hits)[ALL_METRICS_COLS]
             st.dataframe(df_moat_final, use_container_width=True)
             
-            # 📥 DATA DOWNLOAD EXPORT PORTAL (Monster Moat)
             st.markdown("---")
             csv_moat = df_moat_final.to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -160,7 +158,6 @@ elif menu_selection == "⚡ FRESH IPO MONITOR":
             df_ipo = pd.DataFrame(ipo_hits)
             st.dataframe(df_ipo, use_container_width=True)
             
-            # 📥 DATA DOWNLOAD EXPORT PORTAL (IPO Tracker)
             csv_ipo = df_ipo.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 DOWNLOAD FRESH IPO SELECTION (CSV SHEET)",
@@ -180,8 +177,51 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
         if st.form_submit_button("ROUTE TRANSACTION TARGET TO SYSTEM") and stock_name:
             b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
             new_row = pd.DataFrame([{
-                "Stock": stock_name, "Buy Price": input_price, "Quantity": input_qty, 
-                "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, 
-                "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"
+                "Stock": stock_name, 
+                "Buy Price": input_price, 
+                "Quantity": input_qty, 
+                "Buy Date": str(trade_date), 
+                "Buy Charges": b_charges, 
+                "Sell Price": 0.0, 
+                "Sell Date": "-", 
+                "Sell Charges": 0.0, 
+                "Realized P&L": 0.0, 
+                "Status": "ACTIVE"
             }])
-            st.session_state.portfolio_data_store = pd.concat(
+            st.session_state.portfolio_data_store = pd.concat([st.session_state.portfolio_data_store, new_row], ignore_index=True)
+            st.success("Transaction Processed Successfully into Account Replica Layout!")
+
+elif menu_selection == "📋 RUNNING POSITION REPLICA":
+    st.subheader("📋 REPLICA ACCOUNTING SYSTEM PORTFOLIO")
+    if active_portfolio.empty:
+        st.info("System layer vacant. Append positions using Transaction Desk.")
+    else:
+        st.dataframe(active_portfolio, use_container_width=True)
+        
+        csv_active = active_portfolio.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 DOWNLOAD RUNNING PORTFOLIO REAL-TIME LEDGER",
+            data=csv_active,
+            file_name=f"running_portfolio_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv"
+        )
+
+elif menu_selection == "📊 RISK ASSESSMENT MODULE":
+    st.subheader("📊 DEEP QUANT PORTFOLIO METRICS & CLOSED ARCHIVES")
+    if closed_portfolio.empty:
+        st.info("No historical archives found to compute closed account logs.")
+    else:
+        st.markdown("### CLOSED REVENUE TRANSACTION HISTORY")
+        st.dataframe(closed_portfolio, use_container_width=True)
+        
+        csv_closed = closed_portfolio.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 DOWNLOAD CLOSED HISTORICAL LEDGER VAULT",
+            data=csv_closed,
+            file_name=f"closed_history_vault_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv"
+        )
+
+# Layout Tips Injection
+render_operational_guidelines()
+render_terminal_footer()
