@@ -35,8 +35,6 @@ def apply_terminal_theme():
             border: 1px solid #1e293b;
             border-radius: 6px;
         }
-        
-        /* 📜 Glowing Institutional Header Banner Box */
         .header-banner {
             background-color: #0f141c;
             padding: 22px;
@@ -58,7 +56,6 @@ def apply_terminal_theme():
             font-size: 14px !important;
             font-weight: 600;
         }
-        
         .guide-box {
             background-color: #111827;
             border-left: 4px solid #00ffcc;
