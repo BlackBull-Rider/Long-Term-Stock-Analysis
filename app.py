@@ -1,7 +1,6 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import pandas_ta as ta
 
 # =========================================================================
 # 📝 আপনার পোর্টফোলিও / হোল্ডিং লিস্ট 
@@ -31,9 +30,9 @@ def track_advanced_portfolio(ticker, holding_info):
         invested_value = buy_price * qty
         pnl = current_value - invested_value
         
-        # অ্যাডভান্সড টেকনিক্যাল ইন্ডিকেটর (Weekly 20 & 50 EMA)
-        df['EMA_20'] = ta.ema(df['Close'], length=20)
-        df['EMA_50'] = ta.ema(df['Close'], length=50)
+        # পিওর পান্ডাস দিয়ে EMA ক্যালকুলেশন (No external library needed)
+        df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
+        df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         df['20_Week_High'] = df['High'].shift(1).rolling(window=20).max()
         
         ema_20 = df['EMA_20'].iloc[-1]
@@ -57,7 +56,7 @@ def track_advanced_portfolio(ticker, holding_info):
             qty_to_book = round(qty / 2)
             qty_to_hold = qty - qty_to_book
             
-        # ৩. যদি কারেন্ট প্রাইস ২০-উইক হাই ব্রেক করে ওপরে ওড়ে -> নতুন করে রি-ইনভেস্ট বা টপ-আপের সুযোগ
+        # ৩. যদি কারেন্ট প্রাইস ২০-উইক হাই ব্রেক করে ওপরে ওড়ে -> নতুন করে রি-ইনভেস্ট
         elif current_price >= twenty_week_high:
             action = "🔥 BREAKOUT: HOLD / RE-INVEST ALLOWED"
             qty_to_book = 0
@@ -73,7 +72,7 @@ def track_advanced_portfolio(ticker, holding_info):
             "System Action": action,
             "Book Qty": qty_to_book,
             "Hold Qty": qty_to_hold,
-            "20 EMA (Partial Booking Line)": round(ema_20, 2) if not pd.isna(ema_20) else "N/A",
+            "20 EMA (Partial Booking)": round(ema_20, 2) if not pd.isna(ema_20) else "N/A",
             "50 EMA (Full Exit Line)": round(ema_50, 2) if not pd.isna(ema_50) else "N/A"
         }
     except Exception as e:
@@ -92,26 +91,29 @@ if st.button("🔄 Scan & Track Portfolio Live"):
             if data:
                 results.append(data)
                 
-        final_df = pd.DataFrame(results)
-        total_pnl = final_df["P&L (Rs.)"].sum()
-        
-        st.write("---")
-        kpi1, kpi2 = st.columns(2)
-        kpi1.metric(label="Total Portfolio Live P&L", value=f"Rs. {total_pnl:,.2f}")
-        kpi2.metric(label="Total Tracked Assets", value=str(len(final_df)))
-        st.write("---")
-        
-        def highlight_action(val):
-            if "BOOK 50%" in val:
-                return 'background-color: #e67e22; color: white; font-weight: bold;'
-            elif "EXIT" in val:
-                return 'background-color: #e74c3c; color: white; font-weight: bold;'
-            elif "RE-INVEST" in val:
-                return 'background-color: #2ecc71; color: white; font-weight: bold;'
-            return 'background-color: #2c3e50; color: #ecf0f1;'
+        if results:
+            final_df = pd.DataFrame(results)
+            total_pnl = final_df["P&L (Rs.)"].sum()
+            
+            st.write("---")
+            kpi1, kpi2 = st.columns(2)
+            kpi1.metric(label="Total Portfolio Live P&L", value=f"Rs. {total_pnl:,.2f}")
+            kpi2.metric(label="Total Tracked Assets", value=str(len(final_df)))
+            st.write("---")
+            
+            def highlight_action(val):
+                if "BOOK 50%" in val:
+                    return 'background-color: #e67e22; color: white; font-weight: bold;'
+                elif "EXIT" in val:
+                    return 'background-color: #e74c3c; color: white; font-weight: bold;'
+                elif "RE-INVEST" in val:
+                    return 'background-color: #2ecc71; color: white; font-weight: bold;'
+                return 'background-color: #2c3e50; color: #ecf0f1;'
 
-        st.dataframe(
-            final_df.style.applymap(highlight_action, subset=['System Action']),
-            use_container_width=True
-        )
-        st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড আপডেট করা হয়েছে!")
+            st.dataframe(
+                final_df.style.applymap(highlight_action, subset=['System Action']),
+                use_container_width=True
+            )
+            st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড আপডেট করা হয়েছে!")
+        else:
+            st.error("কোনো ডেটা পাওয়া যায়নি। অনুগ্রহ করে হোল্ডিং লিস্ট চেক করুন।")
