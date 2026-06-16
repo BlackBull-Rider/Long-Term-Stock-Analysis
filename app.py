@@ -30,7 +30,7 @@ def track_advanced_portfolio(ticker, holding_info):
         invested_value = buy_price * qty
         pnl = current_value - invested_value
         
-        # পিওর পান্ডাস দিয়ে EMA ক্যালকুলেশন (No external library needed)
+        # পিওর পান্ডাস দিয়ে EMA ক্যালকুলেশন
         df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         df['20_Week_High'] = df['High'].shift(1).rolling(window=20).max()
@@ -50,7 +50,7 @@ def track_advanced_portfolio(ticker, holding_info):
             qty_to_book = qty
             qty_to_hold = 0
             
-        # ২. যদি শর্ট-টার্ম মোমেন্টাম লাইন (20 EMA) ব্রেক হয় -> ৫০% প্রফিট বুক
+        # ২. যদি শর্ট-টার্ম মোメントাম লাইন (20 EMA) ব্রেক হয় -> ৫০% প্রফিট বুক
         elif current_price < ema_20:
             action = "💰 MOMENTUM WEAK: BOOK 50% QUANTITY"
             qty_to_book = round(qty / 2)
@@ -110,10 +110,9 @@ if st.button("🔄 Scan & Track Portfolio Live"):
                     return 'background-color: #2ecc71; color: white; font-weight: bold;'
                 return 'background-color: #2c3e50; color: #ecf0f1;'
 
-                        st.dataframe(
+            st.dataframe(
                 final_df.style.map(highlight_action, subset=['System Action']),
                 use_container_width=True
-
             )
             st.success("টেকনিক্যাল রুলস অনুযায়ী ড্যাশবোর্ড আপডেট করা হয়েছে!")
         else:
