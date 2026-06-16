@@ -12,9 +12,7 @@ from stocks import SCREENER_WATCHLIST
 # পেজ কনফিগারেশন
 st.set_page_config(page_title="Alpha Institutional Terminal", layout="wide", initial_sidebar_state="collapsed")
 
-# =========================================================================
-# 🔗 এখানে তোমার গুগল শিটের লিংকটি সরাসরি কোডের ভেতরে ফিক্স করে দেওয়া হলো
-# =========================================================================
+# গুগল শিটের লিংক কোডের ভেতরে ফিক্সড
 sheet_url = "https://docs.google.com/spreadsheets/d/1ld54OCt-mfc5qGCGdFmCXXrZeTHPLBWWL7eG0cxSRlU/edit"
 
 st.markdown("""
@@ -34,13 +32,24 @@ def load_portfolio_data():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         df = conn.read(spreadsheet=sheet_url, ttl=0)
+        
         if df.empty or len(df.columns) < 4:
             return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
+            
+        # কলামের নাম স্ট্যান্ডার্ড ফরম্যাটে আনা
         df.columns = ["Stock", "Buy Price", "Quantity", "Date"]
+        
+        # ডাটা ক্লিনিং: ফাঁকা রো এবং NaN দূর করার ইনস্টিটিউশনাল মেকানিজম
+        df = df.dropna(subset=["Stock"])
         df['Stock'] = df['Stock'].astype(str).str.upper().str.strip()
-        df['Buy Price'] = pd.to_numeric(df['Buy Price'], errors='coerce')
-        df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce')
-        return df.dropna(subset=["Stock"])
+        df = df[df['Stock'] != ""]
+        
+        df['Buy Price'] = pd.to_numeric(df['Buy Price'], errors='coerce').fillna(0.0)
+        df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce').fillna(0).astype(int)
+        
+        # যেসব রোর কোয়ান্টিটি বা প্রাইস ০, সেগুলোকে বাদ দেওয়া
+        df = df[(df['Buy Price'] > 0) & (df['Quantity'] > 0)]
+        return df.reset_index(drop=True)
     except:
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Date"])
 
@@ -61,6 +70,7 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
     try:
         if not ticker.endswith(".NS"): ticker = f"{ticker}.NS"
         stock = yf.Ticker(ticker)
+        
         df = stock.history(period="2y", interval="1wk")
         if df.empty or len(df) < 50: return None
         
@@ -126,7 +136,6 @@ def analyze_stock_advanced(ticker, buy_price=None, qty=None):
         return None
 
 # --- নেভিগেশন ট্যাব ---
-st.title("🦅 Alpha Institutional Investment Terminal")
 tab1, tab2, tab3 = st.tabs(["🔍 Live Screener", "📥 Order Execution (Buy/Sell)", "📊 Deep Portfolio Analysis"])
 
 # TAB 1: SCREENER
@@ -170,34 +179,36 @@ with tab2:
         submit_btn = st.form_submit_button("🚀 Execute Transaction & Update Sheet")
         
         if submit_btn and stock_name:
+            global_portfolio = load_portfolio_data() # ফ্রেশ ডেটা রিলোড করা হচ্ছে
+            
             if "BUY" in trade_type:
-                if stock_name in portfolio_df['Stock'].values:
-                    existing_row = portfolio_df[portfolio_df['Stock'] == stock_name].iloc[0]
-                    old_qty = existing_row['Quantity']
-                    old_price = existing_row['Buy Price']
+                if stock_name in global_portfolio['Stock'].values:
+                    existing_row = global_portfolio[global_portfolio['Stock'] == stock_name].iloc[0]
+                    old_qty = int(existing_row['Quantity'])
+                    old_price = float(existing_row['Buy Price'])
                     new_qty = old_qty + input_qty
                     new_price = ((old_price * old_qty) + (input_price * input_qty)) / new_qty
-                    portfolio_df.loc[portfolio_df['Stock'] == stock_name, ['Buy Price', 'Quantity', 'Date']] = [new_price, new_qty, str(trade_date)]
+                    global_portfolio.loc[global_portfolio['Stock'] == stock_name, ['Buy Price', 'Quantity', 'Date']] = [new_price, new_qty, str(trade_date)]
                 else:
                     new_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": input_price, "Quantity": input_qty, "Date": str(trade_date)}])
-                    portfolio_df = pd.concat([portfolio_df, new_row], ignore_index=True)
+                    global_portfolio = pd.concat([global_portfolio, new_row], ignore_index=True)
                 
-                if save_portfolio_data(portfolio_df):
+                if save_portfolio_data(global_portfolio):
                     st.success(f"🛒 {stock_name} সফলভাবে পোর্টফোলিওতে যোগ করা হয়েছে!")
                     st.rerun()
             else:
-                if stock_name in portfolio_df['Stock'].values:
-                    existing_row = portfolio_df[portfolio_df['Stock'] == stock_name].iloc[0]
-                    old_qty = existing_row['Quantity']
+                if stock_name in global_portfolio['Stock'].values:
+                    existing_row = global_portfolio[global_portfolio['Stock'] == stock_name].iloc[0]
+                    old_qty = int(existing_row['Quantity'])
                     if input_qty >= old_qty:
-                        portfolio_df = portfolio_df[portfolio_df['Stock'] != stock_name]
+                        global_portfolio = global_portfolio[global_portfolio['Stock'] != stock_name]
                         msg = f"🚨 {stock_name} থেকে সম্পূর্ণ এক্সিট করা হয়েছে!"
                     else:
                         new_qty = old_qty - input_qty
-                        portfolio_df.loc[portfolio_df['Stock'] == stock_name, 'Quantity'] = new_qty
+                        global_portfolio.loc[global_portfolio['Stock'] == stock_name, 'Quantity'] = new_qty
                         msg = f"💰 {stock_name} থেকে {input_qty} পিস প্রফিট বুক করা হয়েছে!"
                     
-                    if save_portfolio_data(portfolio_df):
+                    if save_portfolio_data(global_portfolio):
                         st.success(msg)
                         st.rerun()
                 else:
@@ -207,13 +218,20 @@ with tab2:
 with tab3:
     st.header("📊 Institutional Risk & Performance Analytics")
     if portfolio_df.empty:
-        st.info("💡 Portfolio Database is vacant. Append assets from Tab 2.")
+        st.info("💡 Portfolio Database vacant. Add assets via Order Execution Tab.")
     else:
         with st.spinner("Calculating Portfolio Risk Analytics..."):
             port_results = []
             for _, row in portfolio_df.iterrows():
-                res = analyze_stock_advanced(row["Stock"], float(row["Buy Price"]), int(row["Quantity"]))
-                if res: port_results.append(res)
+                # প্রতিটি মান কনভার্ট করার আগে ডাবল সেফটি চেক
+                try:
+                    s_name = str(row["Stock"])
+                    s_price = float(row["Buy Price"])
+                    s_qty = int(row["Quantity"])
+                    res = analyze_stock_advanced(s_name, s_price, s_qty)
+                    if res: port_results.append(res)
+                except:
+                    continue
                 
             if port_results:
                 port_df = pd.DataFrame(port_results)
