@@ -1,19 +1,16 @@
 # app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 from datetime import datetime
 
-# Local Data Components Imports
 from stocks import SCREENER_WATCHLIST
-from core.styles import apply_terminal_theme, render_branding_header, render_terminal_footer
+from core.styles import apply_terminal_theme, render_branding_header, render_operational_guidelines, render_terminal_footer
 from core.engine import calculate_indian_market_charges, run_massive_scan_engine, scan_ipo_fresh_listings
 
-# ১. থিম ও সিএসএস লাইভ লোড
+# Core UI Launcher
 apply_terminal_theme()
 render_branding_header()
 
-# ২. ড্যাশবোর্ড স্টেট প্রিপারেশন
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = pd.DataFrame(columns=[
         "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
@@ -22,39 +19,44 @@ if "portfolio_data_store" not in st.session_state:
 
 master_df = st.session_state.portfolio_data_store
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
+closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
-# ৩. কন্ট্রোল প্যানেল সাইডবার
-st.sidebar.title("🦅 Alpha Controls")
-st.sidebar.write("`⚡ Operational Safe-Mode: ON`")
+# Master Layout Sidebar Controls
+st.sidebar.title("🦅 MASTER NAVIGATION")
+st.sidebar.write("`IDENTITY: GREEN BULL RIDER`")
 st.sidebar.markdown("---")
 
 menu_selection = st.sidebar.radio(
-    "TERMINAL NAVIGATION",
+    "CHOOSE MODULE PLATFORM",
     [
-        "🔍 Live Screener Core",
-        "🚀 Monster Moat Hunt",
-        "🚀 IPO Breakout Monitor",
-        "📥 Order Desk (Buy/Sell)",
-        "📋 Portfolio Tracker Grid",
-        "📊 Capital & Risk Analytics"
+        "🔍 LIVE SCREENER CORE",
+        "🚀 MONSTER MOAT HUNT (1000%)",
+        "⚡ FRESH IPO MONITOR",
+        "📥 TRANSACTION EXECUTION UNIT",
+        "📋 RUNNING POSITION REPLICA",
+        "📊 RISK ASSESSMENT MODULE"
     ]
 )
 
+# Complete Operational Column Framework
+ALL_METRICS_COLS = [
+    "Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", 
+    "Sales Growth (%)", "Gross Margin (%)", "Inventory Speed (x)", 
+    "Marketing Efficiency (x)", "Promoter (%)", "Institutions (%)", 
+    "Max DD (%)", "EMA200 Dist (%)", "System Action"
+]
+
 # =========================================================================
-# MODULE RE-ROUTING ENGINE
+# CONTROLLER BRANCH ROUTING
 # =========================================================================
 
-if menu_selection == "🔍 Live Screener Core":
-    st.subheader("🦅 High-Speed Batch Institutional Screener")
-    st.write("টার্গেট রিটার্নের ওপর ভিত্তি করে সিস্টেম অটোমেটিকলি কোয়ালিটি ফিল্টার রেশিও সেট করবে।")
-    st.markdown("---")
+if menu_selection == "🔍 LIVE SCREENER CORE":
+    st.subheader("🦅 CORE BATCH QUANT MATRIX")
     
-    st.markdown("#### 🎯 Macro Investment Goals")
     col_g1, col_g2 = st.columns(2)
-    invest_horizon = col_g1.number_input("Investment Holding Term (Years)", min_value=0.5, max_value=15.0, value=2.0, step=0.5)
-    expected_return = col_g2.number_input("Minimum Target Return Expected (% p.a.)", min_value=10.0, max_value=150.0, value=25.0, step=5.0)
+    invest_horizon = col_g1.number_input("Investment Term (Years)", min_value=0.5, max_value=15.0, value=2.0, step=0.5)
+    expected_return = col_g2.number_input("Target Expected Return (% p.a.)", min_value=10.0, max_value=150.0, value=25.0, step=5.0)
     
-    # 🚀 সম্পূর্ণ ডাইনামিক স্ল্যাব লজিক (৫০% থেকে ১৫০% পর্যন্ত আলাদা কড়া ভ্যালু আসবে)
     if expected_return >= 100:
         calc_sales, calc_roe, calc_pe, calc_ema_dist = 30.0, 35.0, 25.0, 4.0
     elif expected_return >= 60:
@@ -69,92 +71,117 @@ if menu_selection == "🔍 Live Screener Core":
     calc_mcap = 1500.0 if invest_horizon <= 1.0 else 1000.0
     calc_promoter = 40.0 if expected_return > 35 else 30.0
     
-    st.markdown("#### 📊 Dynamic Fundamental Quality Matrix (Editable)")
     col_f1, col_f2 = st.columns(2)
-    min_sales = col_f1.number_input("Min Sales Growth (%)", min_value=0.0, max_value=100.0, value=float(calc_sales), step=1.0)
-    min_roe = col_f2.number_input("Min ROE (%)", min_value=0.0, max_value=100.0, value=float(calc_roe), step=1.0)
+    min_sales = col_f1.number_input("Minimum Sales Growth (%)", min_value=0.0, max_value=100.0, value=float(calc_sales))
+    min_roe = col_f2.number_input("Minimum ROE (%)", min_value=0.0, max_value=100.0, value=float(calc_roe))
     
     col_f3, col_f4 = st.columns(2)
-    max_pe = col_f3.number_input("Max P/E Ratio (0 for Any)", min_value=0.0, max_value=300.0, value=float(calc_pe), step=1.0)
-    min_mcap = col_f4.number_input("Min Market Cap (Cr)", min_value=0.0, max_value=500000.0, value=float(calc_mcap), step=100.0)
+    max_pe = col_f3.number_input("Maximum P/E Ratio (0 for Any)", min_value=0.0, max_value=300.0, value=float(calc_pe))
+    min_mcap = col_f4.number_input("Minimum Market Cap (Cr)", min_value=0.0, max_value=500000.0, value=float(calc_mcap))
 
-    st.markdown("#### 🏢 Institutional Ownership & Tech Setup")
     col_o1, col_o2 = st.columns(2)
-    min_promoter = col_o1.number_input("Min Promoter Holding (%)", min_value=0.0, max_value=100.0, value=float(calc_promoter), step=1.0)
-    min_ema200_dist = col_o2.number_input("Min Distance from 200 EMA (%)", min_value=-50.0, max_value=100.0, value=float(calc_ema_dist), step=0.5)
+    min_promoter = col_o1.number_input("Minimum Promoter Holding (%)", min_value=0.0, max_value=100.0, value=float(calc_promoter))
+    min_ema200_dist = col_o2.number_input("Minimum 200 EMA Cushion Distance (%)", min_value=-50.0, max_value=100.0, value=float(calc_ema_dist))
     
-    st.markdown("---")
-    
-    if st.button("⚡ EXECUTE COMPLIANT BATCH SCAN", use_container_width=True):
+    if st.button("EXECUTE LIVE SCREENER PARALLEL PROCESS"):
         status_box = st.empty()
-        status_box.info("🌪️ Fetching 7-Year History from Safe Cache Replica...")
+        status_box.info("Syncing cached 7-year pipeline records...")
         
-        expanded_watchlist = SCREENER_WATCHLIST * 10
-        raw_results = run_massive_scan_engine(expanded_watchlist, invest_horizon, expected_return)
-        
+        raw_results = run_massive_scan_engine(SCREENER_WATCHLIST * 10, invest_horizon, expected_return)
         filtered_results = []
+        
         for res in raw_results:
             if not res: continue
             if (res["Sales Growth (%)"] >= min_sales and res["ROE (%)"] >= min_roe and 
                 res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe)):
                 
-                raw_promoter = res["Promoter (%)"]
-                val_promoter = float(raw_promoter) if isinstance(raw_promoter, (int, float)) else 0.0
-                actual_ema200_dist = float(res["EMA200 Dist (%)"].replace("%",""))
-                
-                if val_promoter >= min_promoter and actual_ema200_dist >= min_ema200_dist:
+                if float(res["Promoter (%)"]) >= min_promoter and float(res["EMA200 Dist (%)"].replace("%","")) >= min_ema200_dist:
                     filtered_results.append(res)
                     
         status_box.empty()
         if filtered_results:
-            st.success(f"🎯 Scan Complete! Found {len(filtered_results)} institutional setups.")
-            df_display = pd.DataFrame(filtered_results)
+            st.success(f"Execution complete. Filtered {len(filtered_results)} matching assets.")
+            df_final = pd.DataFrame(filtered_results)[ALL_METRICS_COLS]
+            st.dataframe(df_final, use_container_width=True)
             
-            # চার্ট সেটআপ কলামটি ২ নম্বরে পজিশন করা হলো
-            final_cols = ["Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", "Promoter (%)", "Max DD (%)", "EMA200 Dist (%)", "System Action"]
-            st.dataframe(df_display[final_cols], use_container_width=True)
+            # 📥 DATA DOWNLOAD EXPORT PORTAL (Core Screener)
+            st.markdown("---")
+            csv_data = df_final.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 DOWNLOAD FILTERED WATCHLIST (CSV SHEET)",
+                data=csv_data,
+                file_name=f"core_screener_alpha_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
 
-elif menu_selection == "🚀 Monster Moat Hunt":
-    st.subheader("🔥 Monster Moat Catalyst Scanner (1000% Multibagger Hunt)")
-    st.write("ব্র্যান্ড ভ্যালু, কাস্টমার রিভিউ এবং প্রমোশনের অদৃশ্য শক্তির কোয়ালিটেটিভ স্ক্রেনার।")
-    st.markdown("---")
+elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
+    st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT SCANNER")
     
     col_m1, col_m2 = st.columns(2)
-    min_gross_margin = col_m1.number_input("Minimum Gross Margin % (Brand Premium)", min_value=20.0, max_value=90.0, value=45.0, step=1.0)
-    min_inventory_speed = col_m2.number_input("Minimum Inventory Speed (Consumer Demand)", min_value=2.0, max_value=25.0, value=6.0, step=0.5)
+    min_gross_margin = col_m1.number_input("Brand Pricing Premium Power (Minimum Gross Margin %)", min_value=20.0, max_value=90.0, value=45.0)
+    min_inventory_speed = col_m2.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", min_value=2.0, max_value=25.0, value=6.0)
     
-    if st.button("🚀 EXECUTE 1000% MONSTER MOAT SCAN", use_container_width=True):
+    if st.button("RUN 1000% MULTIBAGGER INSIGHT ENGINE"):
         status = st.empty()
-        status.warning("🌪️ Compiling 7-Year Chart Setups + Brand Moat Matrix...")
+        status.warning("Analyzing brand loyalty indices and structural multi-year breakout parameters...")
         
-        expanded_watchlist = SCREENER_WATCHLIST * 10
-        raw_results = run_massive_scan_engine(expanded_watchlist, invest_horizon=2.0, expected_return=50.0)
-        
+        raw_results = run_massive_scan_engine(SCREENER_WATCHLIST * 10, invest_horizon=2.0, expected_return=50.0)
         moat_hits = []
+        
         for res in raw_results:
             if not res: continue
             if res["Gross Margin (%)"] >= min_gross_margin and res["Inventory Speed (x)"] >= min_inventory_speed:
-                if res["ROE (%)"] >= 20.0:  # হাই আলফা ফিল্টার
+                if res["ROE (%)"] >= 20.0:
                     moat_hits.append(res)
                     
         status.empty()
         if moat_hits:
-            st.success(f"🔥 BOOM! Found {len(moat_hits)} Mega Monopoly Brands.")
-            df_moat = pd.DataFrame(moat_hits)
-            moat_cols = ["Stock", "Chart Setup", "CMP (₹)", "Gross Margin (%)", "Inventory Speed (x)", "Marketing Efficiency (x)", "ROE (%)", "System Action"]
-            st.dataframe(df_moat[moat_cols], use_container_width=True)
+            st.success(f"Moat configuration complete. Found {len(moat_hits)} high-alpha compounds.")
+            df_moat_final = pd.DataFrame(moat_hits)[ALL_METRICS_COLS]
+            st.dataframe(df_moat_final, use_container_width=True)
+            
+            # 📥 DATA DOWNLOAD EXPORT PORTAL (Monster Moat)
+            st.markdown("---")
+            csv_moat = df_moat_final.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 DOWNLOAD MONSTER MOAT DATASET (CSV SHEET)",
+                data=csv_moat,
+                file_name=f"monster_moat_alpha_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
         else:
-            st.warning("No asset found matching this extreme level of pricing power.")
+            st.error("No core asset matched these strict structural parameters.")
 
-elif menu_selection == "🚀 IPO Breakout Monitor":
-    st.subheader("🚀 Fresh Listings & IPO Breakout Matrix")
-    if st.button("🔥 Scan IPO Fresh Liquid Assets", use_container_width=True):
+elif menu_selection == "⚡ FRESH IPO MONITOR":
+    st.subheader("🚀 FRESH LISTINGS BREAKOUT TRACKER")
+    if st.button("SCAN FRESH IPO VOLUME INFLEXIONS"):
         ipo_hits = scan_ipo_fresh_listings(SCREENER_WATCHLIST[:15])
-        if ipo_hits: st.dataframe(pd.DataFrame(ipo_hits), use_container_width=True)
-        else: st.info("No active IPO breakout structures identified today.")
+        if ipo_hits: 
+            df_ipo = pd.DataFrame(ipo_hits)
+            st.dataframe(df_ipo, use_container_width=True)
+            
+            # 📥 DATA DOWNLOAD EXPORT PORTAL (IPO Tracker)
+            csv_ipo = df_ipo.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 DOWNLOAD FRESH IPO SELECTION (CSV SHEET)",
+                data=csv_ipo,
+                file_name=f"ipo_breakout_alpha_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
 
-elif menu_selection == "📥 Order Desk (Buy/Sell)" or menu_selection == "📋 Portfolio Tracker Grid" or menu_selection == "📊 Capital & Risk Analytics":
-    st.subheader("📡 Operational Layer")
-    st.info("System is running in safe read-only screener mode. Open port to activate transactions.")
-
-render_terminal_footer()
+elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
+    st.subheader("📥 TRADING DESK EXECUTION FRAMEWORK")
+    with st.form("trading_desk_form", clear_on_submit=True):
+        stock_name = st.selectbox("Select Asset Symbol", options=sorted(SCREENER_WATCHLIST), index=None)
+        input_price = st.number_input("Execution Price (INR)", min_value=0.1)
+        input_qty = st.number_input("Volume Order Size", min_value=1)
+        trade_date = st.date_input("Date", datetime.now())
+        
+        if st.form_submit_button("ROUTE TRANSACTION TARGET TO SYSTEM") and stock_name:
+            b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
+            new_row = pd.DataFrame([{
+                "Stock": stock_name, "Buy Price": input_price, "Quantity": input_qty, 
+                "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, 
+                "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"
+            }])
+            st.session_state.portfolio_data_store = pd.concat(
