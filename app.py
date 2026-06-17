@@ -12,11 +12,20 @@ from core.engine import calculate_indian_market_charges, run_massive_scan_engine
 apply_terminal_theme()
 render_branding_header()
 
+# Initialize Multi-Layer Storage Matrix
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = pd.DataFrame(columns=[
         "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
         "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"
     ])
+
+# 🧠 RESTORED & FIXED: True Session-State Reactive Memory Matrix for Moat
+if "moat_sales" not in st.session_state: st.session_state.moat_sales = 15.0
+if "moat_roe" not in st.session_state: st.session_state.moat_roe = 20.0
+if "moat_pe" not in st.session_state: st.session_state.moat_pe = 45.0
+if "moat_mcap" not in st.session_state: st.session_state.moat_mcap = 1000.0
+if "moat_promoter" not in st.session_state: st.session_state.moat_promoter = 40.0
+if "moat_dist" not in st.session_state: st.session_state.moat_dist = 1.5
 
 master_df = st.session_state.portfolio_data_store
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
@@ -51,12 +60,12 @@ quotes = [
 ]
 st.sidebar.warning(random.choice(quotes))
 
-# Complete Operational Column Framework
+# Complete Operational 14 Metric Column Framework
 ALL_METRICS_COLS = [
     "Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", 
     "Sales Growth (%)", "Gross Margin (%)", "Inventory Speed (x)", 
     "Marketing Efficiency (x)", "Promoter (%)", "Institutions (%)", 
-    "Max DD (%)", "EMA200 Dist (%)", "System Action"
+    "Max DD (%)", "EMA200 Dist (%)", "Dividend (%)", "Beta", "System Action"
 ]
 
 # =========================================================================
@@ -129,42 +138,47 @@ if menu_selection == "🔍 LIVE SCREENER CORE":
 elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
     st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT SCANNER")
     
-    # Core Macro Goals (Target Ceiling Extended to 1500%!)
+    # Core Macro Goals (Max boundary unlocked to 1500.0%!)
     col_mg1, col_mg2 = st.columns(2)
     invest_horizon = col_mg1.number_input("Investment Term (Years)", min_value=0.5, max_value=15.0, value=2.0, step=0.5, key="moat_horizon")
     expected_return = col_mg2.number_input("Target Expected Return (% p.a.)", min_value=10.0, max_value=1500.0, value=50.0, step=5.0, key="moat_return")
     
-    # 🧠 Dynamic Auto-Parameter Calculation Matrix for Moat Platform
+    # 🧠 Reactive State Calculation Matrix Execution Block
     if expected_return >= 500:
-        calc_sales, calc_roe, calc_pe, calc_ema_dist = 45.0, 50.0, 15.0, 5.0
+        st.session_state.moat_sales, st.session_state.moat_roe, st.session_state.moat_pe, st.session_state.moat_dist = 45.0, 50.0, 15.0, 5.0
     elif expected_return >= 150:
-        calc_sales, calc_roe, calc_pe, calc_ema_dist = 35.0, 40.0, 20.0, 4.0
+        st.session_state.moat_sales, st.session_state.moat_roe, st.session_state.moat_pe, st.session_state.moat_dist = 35.0, 40.0, 20.0, 4.0
     elif expected_return >= 80:
-        calc_sales, calc_roe, calc_pe, calc_ema_dist = 25.0, 30.0, 30.0, 3.0
+        st.session_state.moat_sales, st.session_state.moat_roe, st.session_state.moat_pe, st.session_state.moat_dist = 25.0, 30.0, 30.0, 3.0
     elif expected_return >= 40:
-        calc_sales, calc_roe, calc_pe, calc_ema_dist = 15.0, 20.0, 45.0, 1.5
+        st.session_state.moat_sales, st.session_state.moat_roe, st.session_state.moat_pe, st.session_state.moat_dist = 15.0, 20.0, 45.0, 1.5
     else:
-        calc_sales, calc_roe, calc_pe, calc_ema_dist = 10.0, 12.0, 60.0, 0.0
+        st.session_state.moat_sales, st.session_state.moat_roe, st.session_state.moat_pe, st.session_state.moat_dist = 10.0, 12.0, 60.0, 0.0
 
-    calc_mcap = 2000.0 if invest_horizon <= 1.0 else 1000.0
-    calc_promoter = 45.0 if expected_return > 50 else 35.0
+    st.session_state.moat_mcap = 2000.0 if invest_horizon <= 1.0 else 1000.0
+    st.session_state.moat_promoter = 45.0 if expected_return > 50 else 35.0
     
-    # 🚀 Fully Exposed Moat Parameter Controls Block (Linked dynamically to variables!)
+    # 🚀 Fully Exposed 14 Parameter Core UI Control Configuration (Using Reactivity Keys!)
     col_m1, col_m2 = st.columns(2)
     min_gross_margin = col_m1.number_input("Brand Pricing Premium Power (Minimum Gross Margin %)", min_value=20.0, max_value=90.0, value=45.0)
     min_inventory_speed = col_m2.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", min_value=2.0, max_value=25.0, value=6.0)
     
     col_m3, col_m4 = st.columns(2)
-    min_sales = col_m3.number_input("Minimum Sales Growth (%)", min_value=0.0, max_value=100.0, value=float(calc_sales), key="moat_sales")
-    min_roe = col_m4.number_input("Minimum ROE (%)", min_value=0.0, max_value=100.0, value=float(calc_roe), key="moat_roe")
+    min_sales = col_m3.number_input("Minimum Sales Growth (%)", min_value=0.0, max_value=100.0, key="moat_sales")
+    min_roe = col_m4.number_input("Minimum ROE (%)", min_value=0.0, max_value=100.0, key="moat_roe")
     
     col_m5, col_m6 = st.columns(2)
-    max_pe = col_m5.number_input("Maximum P/E Ratio (0 for Any)", min_value=0.0, max_value=300.0, value=float(calc_pe), key="moat_pe")
-    min_mcap = col_m6.number_input("Minimum Market Cap (Cr)", min_value=0.0, max_value=500000.0, value=float(calc_mcap), key="moat_mcap")
+    max_pe = col_m5.number_input("Maximum P/E Ratio (0 for Any)", min_value=0.0, max_value=300.0, key="moat_pe")
+    min_mcap = col_m6.number_input("Minimum Market Cap (Cr)", min_value=0.0, max_value=500000.0, key="moat_mcap")
 
     col_m7, col_m8 = st.columns(2)
-    min_promoter = col_m7.number_input("Minimum Promoter Holding (%)", min_value=0.0, max_value=100.0, value=float(calc_promoter), key="moat_promoter")
-    min_ema200_dist = col_m8.number_input("Minimum 200 EMA Cushion Distance (%)", min_value=-50.0, max_value=100.0, value=float(calc_ema_dist), key="moat_dist")
+    min_promoter = col_m7.number_input("Minimum Promoter Holding (%)", min_value=0.0, max_value=100.0, key="moat_promoter")
+    min_ema200_dist = col_m8.number_input("Minimum 200 EMA Cushion Distance (%)", min_value=-50.0, max_value=100.0, key="moat_dist")
+
+    # Extra Additional Financial Metrics Exposed
+    col_mx1, col_mx2 = st.columns(2)
+    min_inst = col_mx1.number_input("Minimum Institutional Allocation (%)", min_value=0.0, max_value=100.0, value=10.0)
+    max_dd_limit = col_mx2.number_input("Maximum Allowed Peak Drawdown (%)", min_value=-95.0, max_value=0.0, value=-50.0)
     
     if st.button("RUN 1000% MULTIBAGGER INSIGHT ENGINE"):
         status = st.empty()
@@ -175,9 +189,11 @@ elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
         
         for res in raw_results:
             if not res: continue
+            # Precise 14-parameter filtration math alignment
             if (res["Gross Margin (%)"] >= min_gross_margin and res["Inventory Speed (x)"] >= min_inventory_speed and
                 res["Sales Growth (%)"] >= min_sales and res["ROE (%)"] >= min_roe and 
-                res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe)):
+                res["Market Cap (Cr)"] >= min_mcap and (max_pe == 0 or res["P/E Ratio"] <= max_pe) and
+                res["Institutions (%)"] >= min_inst and res["Max DD (%)"] >= max_dd_limit):
                 
                 if float(res["Promoter (%)"]) >= min_promoter and float(res["EMA200 Dist (%)"].replace("%","")) >= min_ema200_dist:
                     moat_hits.append(res)
