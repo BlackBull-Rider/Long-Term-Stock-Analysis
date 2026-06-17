@@ -8,7 +8,7 @@ from datetime import datetime
 import yfinance as yf
 import plotly.express as px
 
-# 🎯 ১. সেশন স্টেট ব্যাকবোন সবার আগে ভ্যালিডেট করা হলো (লগ ক্লিয়ারিং সেফগার্ড সহ)
+# 🎯 ১. সেশন স্টেট মেমোরি সবার আগে ব্যাকবোন হিসেবে লক করা হলো
 if "live_logs" not in st.session_state:
     st.session_state.live_logs = []
 
@@ -19,12 +19,12 @@ from core.engine import (
     load_offline_market_data, add_log
 )
 
-# Premium UI Theme Setup
+# Premium UI Dark HUD Rules Apply
 apply_terminal_theme()
 render_branding_header()
 
 # =========================================================================
-# GITHUB ENVIRONMENT CORE GATEWAY
+# GITHUB ARCHITECTURE SETTINGS
 # =========================================================================
 GITHUB_USER = "BlackBull-Rider"  
 GITHUB_REPO = "Long-Term-Stock-Analysis"  
@@ -77,6 +77,7 @@ if "portfolio_data_store" not in st.session_state:
 
 master_df = st.session_state.portfolio_data_store
 
+# ব্যাকঅ্যান্ড স্ট্রাকচার সেফগার্ড ভ্যালিডেশন
 for required_col in ["Buy Price", "Quantity", "Buy Charges", "Sell Price", "Sell Charges", "Realized P&L", "Status"]:
     if required_col not in master_df.columns:
         master_df[required_col] = 0.0 if "Charges" in required_col or "Price" in required_col or "P&L" in required_col else ("ACTIVE" if required_col == "Status" else 0)
@@ -84,19 +85,20 @@ for required_col in ["Buy Price", "Quantity", "Buy Charges", "Sell Price", "Sell
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
 closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
+# 🎯 ২. GLITCH FIX CALLBACK FUNCTION: বাটন টিপলে সবার আগে এটি ব্যাকগ্রাউন্ডে লগ বাফার পুরোপুরি মুছে দেবে
+def clear_logs_callback():
+    st.session_state.live_logs = []
+
 # =========================================================================
-# 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS HUD (বাটন বাগ ফিক্সড)
+# 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS HUD
 # =========================================================================
 st.markdown("### 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS")
 with st.expander("📂 OPEN LIVE SYSTEM HARDWARE TERMINAL CONSOLE", expanded=True):
     col_t1, col_t2 = st.columns([4, 1])
     col_t1.write(f"**NSE Dynamic Array Streams:** `{len(SCREENER_WATCHLIST)} Tickers Locked` | **GitHub Bridge Status:** `{masked_token}`")
     
-    # 🎯 FIXED LOG CLEARING BUG: বাটন টিপলে সেশন পুরোপুরি ক্লিয়ার হবে এবং পেজ স্টেট ক্র্যাশ করবে না
-    if col_t2.button("🧹 Clear Terminal Logs", key="clear_logs_unique_btn"):
-        st.session_state.live_logs = []
-        st.success("Terminal buffer flushed successfully!")
-        st.rerun()
+    # 🎯 ৩. অন-ক্লিক কলব্যাক মেকানিজম লক করা হলো (কোনো রিফ্রেশ গ্লিচ হবে না)
+    col_t2.button("🧹 Clear Terminal Logs", on_click=clear_logs_callback, key="ultimate_clear_logs_btn")
         
     logs_list = st.session_state.get("live_logs", [])
     log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: Pipeline active. Buffer cleared. Awaiting hardware operations sync..."
@@ -237,7 +239,7 @@ elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
         execute_quant_filter_engine(min_sales, min_roe, 35.0, 1000.0, 45.0, 2.5)
 
 # =========================================================================
-# MODULE 4: 📥 TRANSACTION EXECUTION UNIT (সাজেস্টিভ ড্রপডাউন সার্চ)
+# MODULE 4: 📥 TRANSACTION EXECUTION UNIT
 # =========================================================================
 elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
     st.markdown("### 📥 EXECUTIVE ORDER TRANSITS DESK")
