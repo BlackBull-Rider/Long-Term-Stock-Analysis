@@ -21,12 +21,11 @@ apply_terminal_theme()
 render_branding_header()
 
 # =========================================================================
-# 🦅 100% AUTOMATIC HARD-WRITE GITHUB REPOSITORY DATABASE ENGINE
+# 🦅 GITHUB HARD-WRITE ENGINE ROOT CONFIG (FIXED FOR BISWAJIT)
 # =========================================================================
-GITHUB_USER = "BlackBull-Rider"  # তোমার গিটহাব ইউজারনেম স্ক্রিনশট অনুযায়ী বসে গেল
-GITHUB_REPO = "Long-Term-Stock-Analysis"  # তোমার রেপোজিটরি নাম স্ক্রিনশট অনুযায়ী বসে গেল
+GITHUB_USER = "BlackBull-Rider"  
+GITHUB_REPO = "Long-Term-Stock-Analysis"  
 
-# টোকেন স্ট্রিমলিট সিক্রেট লকার থেকে অটোমেটিক রিড হবে
 if "MY_GITHUB_TOKEN" in st.secrets:
     GITHUB_TOKEN = st.secrets["MY_GITHUB_TOKEN"]
 else:
@@ -36,7 +35,7 @@ DB_FILE = "portfolio_db.csv"
 API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{DB_FILE}"
 
 def load_permanent_database():
-    if not GITHUB_TOKEN or "XXXX" in GITHUB_TOKEN:
+    if not GITHUB_TOKEN or GITHUB_TOKEN == "XXXX":
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"])
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     try:
@@ -51,29 +50,36 @@ def load_permanent_database():
     return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"])
 
 def save_permanent_database(df):
-    if not GITHUB_TOKEN or "XXXX" in GITHUB_TOKEN:
-        st.error("❌ GitHub Authentication Token Missing! Secrets Layer Locked.")
+    if not GITHUB_TOKEN or GITHUB_TOKEN == "XXXX":
+        st.error("❌ GitHub Token is Missing in Streamlit Secrets!")
         return
-    st.session_state.portfolio_data_store = df
+        
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
+    
     sha = None
     try:
         res = requests.get(API_URL, headers=headers, timeout=10)
         if res.status_code == 200: sha = res.json()["sha"]
     except: pass
+    
     csv_string = df.to_csv(index=False)
     encoded_content = base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
     payload = {
-        "message": f"🤖 Quant Terminal Auto-Sync // Ledger Modulated {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        "message": f"🤖 Portfolio Auto-Sync {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         "content": encoded_content
     }
     if sha: payload["sha"] = sha
+    
     try:
         response = requests.put(API_URL, headers=headers, json=payload, timeout=15)
-        if response.status_code in [200, 201]: st.toast("🎯 Portfolio Database Saved Automatically to GitHub!", icon="🦅")
+        if response.status_code in [200, 201]: 
+            st.success("🎯 Portfolio Synced with GitHub Root!")
+            st.toast("Portfolio Sync Completed!", icon="🦅")
+        else:
+            st.error(f"❌ GitHub API Error: {response.status_code}. Please check if the token has 'repo' scope.")
     except: pass
 
 if "portfolio_data_store" not in st.session_state:
@@ -108,7 +114,7 @@ ALL_METRICS_COLS = [
 def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200, additional_moat_filter=False, gross_m=0, inv_spd=0, inst_val=0, dd_limit=-100):
     raw_df = load_offline_market_data(GITHUB_USER, GITHUB_REPO, GITHUB_TOKEN)
     if raw_df.empty:
-        st.error("❌ Local Big-Data Cache is empty! Please run 'SYSTEM HARDWARE SYNC' module first.")
+        st.warning("⚠️ Local stock database file is currently empty. Run the 'SYSTEM HARDWARE SYNC' compiler module first.")
         return
         
     filtered_results = []
@@ -139,19 +145,16 @@ def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promot
         
     if filtered_results:
         df_final = pd.DataFrame(filtered_results)[ALL_METRICS_COLS]
-        st.success(f"🎯 Query processed from GitHub Repository in 0.2 seconds! Isolated: {len(df_final)} matching profiles.")
+        st.success(f"🎯 Query Processed. Isolated {len(df_final)} assets.")
         st.dataframe(df_final, use_container_width=True)
     else:
-        st.warning("No assets matched the exact custom structural formula parameters.")
+        st.warning("No matches located under current parameters.")
 
-# =========================================================================
-# SYSTEM ENGINE INTELLIGENCE ROUTING
-# =========================================================================
-
+# Routing Logic Blocks
 if menu_selection == "📊 PORTFOLIO ANALYTICS":
     st.markdown("### 📈 PREMIUM PORTFOLIO EXECUTIVE HUD OVERVIEW")
     if active_portfolio.empty:
-        st.info("💡 Portfolio database empty. Route orders via Execution Desk.")
+        st.info("💡 Position array is empty. Populate slots via Transaction Unit.")
     else:
         with st.spinner("Syncing data loops with exchange tickers..."):
             tickers_list = [f"{s}.NS" for s in active_portfolio["Stock"].unique()]
@@ -175,93 +178,57 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
         roi_pct = (net_unr / tot_inv * 100) if tot_inv > 0 else 0.0
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("INDEX WEIGHT VALUE", f"{tot_cur:,.2f}", "+1.42% Daily Influx")
+        c1.metric("CURRENT EQUITY VALUE", f"₹ {tot_cur:,.2f}")
         c2.metric("CAPITAL INVESTED", f"₹ {tot_inv:,.2f}")
-        c3.metric("CURRENT WALLET EQUITY", f"₹ {tot_cur:,.2f}", delta=f"{roi_pct:.2f}% Real-time Return")
-        c4.metric("UNREALIZED MARGIN NET ROI", f"{roi_pct:+.2f}%")
-
-        st.markdown("---")
-        chart_col1, chart_col2 = st.columns(2)
-        with chart_col1:
-            st.markdown("#### 🎯 Capital Asset Allocation Mix")
-            fig_pie = px.pie(active_portfolio, names="Stock", values="Current Value", hole=0.4, color_discrete_sequence=px.colors.sequential.Mint_r)
-            fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#e2e8f0", showlegend=True, margin=dict(t=10,b=10,l=10,r=10))
-            st.plotly_chart(fig_pie, use_container_width=True)
-        with chart_col2:
-            st.markdown("#### 📈 Portfolio Performance Distribution")
-            fig_bar = px.bar(active_portfolio, x="Stock", y="Unrealized P&L", color="Unrealized P&L", color_continuous_scale=["#ff3366", "#00ffcc"])
-            fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#e2e8f0", margin=dict(t=10,b=10,l=10,r=10))
-            st.plotly_chart(fig_bar, use_container_width=True)
+        c3.metric("NET UNREALIZED P&L", f"₹ {net_unr:,.2f}", delta=f"{roi_pct:.2f}%")
+        c4.metric("TOTAL ROI PERCENTAGE", f"{roi_pct:+.2f}%")
 
         st.markdown("---")
         st.dataframe(active_portfolio[["Stock", "Quantity", "Buy Price", "CMP (₹)", "Total Invested", "Current Value", "Unrealized P&L"]], use_container_width=True)
 
 elif menu_selection == "🔍 LIVE SCREENER CORE":
     st.subheader("🦅 CORE BATCH QUANT MATRIX")
-    col_g1, col_g2 = st.columns(2)
-    invest_horizon = col_g1.number_input("Investment Term (Years)", min_value=0.5, max_value=15.0, value=2.0)
-    expected_return = col_g2.number_input("Target Expected Return (% p.a.)", min_value=10.0, max_value=150.0, value=25.0)
-    
-    if expected_return >= 100: calc_sales, calc_roe, calc_pe, calc_ema_dist = 30.0, 35.0, 25.0, 4.0
-    elif expected_return >= 60: calc_sales, calc_roe, calc_pe, calc_ema_dist = 22.0, 26.0, 30.0, 3.0
-    elif expected_return >= 40: calc_sales, calc_roe, calc_pe, calc_ema_dist = 18.0, 22.0, 35.0, 2.0
-    elif expected_return >= 25: calc_sales, calc_roe, calc_pe, calc_ema_dist = 12.0, 15.0, 50.0, 1.0
-    else: calc_sales, calc_roe, calc_pe, calc_ema_dist = 10.0, 12.0, 65.0, 0.0
-
     col_f1, col_f2 = st.columns(2)
-    min_sales = col_f1.number_input("Minimum Revenue Growth (%)", value=float(calc_sales))
-    min_roe = col_f2.number_input("Minimum Return On Equity (%)", value=float(calc_roe))
-    
+    min_sales = col_f1.number_input("Minimum Revenue Growth (%)", value=15.0)
+    min_roe = col_f2.number_input("Minimum Return On Equity (%)", value=15.0)
     col_f3, col_f4 = st.columns(2)
-    max_pe = col_f3.number_input("Maximum P/E Ratio Limit", value=float(calc_pe))
+    max_pe = col_f3.number_input("Maximum P/E Ratio Limit", value=40.0)
     min_mcap = col_f4.number_input("Minimum Market Cap (Cr)", value=1000.0)
-
     col_o1, col_o2 = st.columns(2)
-    min_promoter = col_o1.number_input("Minimum Promoter Ownership (%)", value=35.0)
-    min_ema200_dist = col_o2.number_input("Minimum Cushion Space from 200 EMA (%)", value=float(calc_ema_dist))
-    
+    min_promoter = col_o1.number_input("Minimum Promoter Ownership (%)", value=40.0)
+    min_ema200_dist = col_o2.number_input("Minimum Cushion Space from 200 EMA (%)", value=2.0)
     if st.button("EXECUTE LIVE SCREENER PARALLEL PROCESS"):
         execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200_dist)
 
 elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
     st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT SCANNER")
-    col_mg1, col_mg2 = st.columns(2)
-    invest_horizon = col_mg1.number_input("Investment Term Sizing (Years)", min_value=0.5, max_value=15.0, value=2.0)
-    expected_return = col_mg2.number_input("Alpha Return Target Model (% p.a.)", min_value=10.0, max_value=1500.0, value=120.0)
-    
     col_m1, col_m2 = st.columns(2)
     min_gross_margin = col_m1.number_input("Pricing Premium Power (Minimum Gross Margin %)", value=45.0)
     min_inventory_speed = col_m2.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", value=6.0)
-    
     col_m3, col_m4 = st.columns(2)
     min_sales = col_m3.number_input("Minimum Sales Growth Rate (%)", value=25.0)
-    min_roe = col_m4.number_input("Minimum Operational ROE (%)", value=30.0)
-    
+    min_roe = col_m4.number_input("Minimum Operational ROE (%)", value=25.0)
     col_m5, col_m6 = st.columns(2)
     max_pe = col_m5.number_input("Maximum Multiples Cap", value=35.0)
     min_mcap = col_m6.number_input("Minimum Threshold Market Cap (Cr)", value=1000.0)
-
     col_m7, col_m8 = st.columns(2)
     min_promoter = col_m7.number_input("Minimum Core Promoter Holding (%)", value=40.0)
     min_ema200_dist = col_m8.number_input("Minimum Cushion Space from 200 EMA (%)", value=3.0)
-
     col_mx1, col_mx2 = st.columns(2)
     min_inst = col_mx1.number_input("Minimum Institutional Allocation Layer (%)", value=15.0)
     max_dd_limit = col_mx2.number_input("Maximum Operational Drawdown Boundary (%)", value=-40.0)
-    
     if st.button("RUN 1000% MULTIBAGGER INSIGHT ENGINE"):
-        execute_quant_filter_engine(
-            min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200_dist,
-            additional_moat_filter=True, gross_m=min_gross_margin, inv_spd=min_inventory_speed,
-            inst_val=min_inst, dd_limit=max_dd_limit
-        )
+        execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200_dist, additional_moat_filter=True, gross_m=min_gross_margin, inv_spd=min_inventory_speed, inst_val=min_inst, dd_limit=max_dd_limit)
 
 elif menu_selection == "📡 SYSTEM HARDWARE SYNC":
     st.subheader("🛰️ COLD REPOSITORY DATA SYNC PIPELINE")
     if st.button("⚡ EXECUTE BATCH BULK DATA REPLICATION (CSV SYNC)"):
-        with st.spinner("Compiling dynamic listed universes directly into GitHub Repository..."):
+        with st.spinner("Downloading and compiling exchange assets maps directly to GitHub..."):
             total_synced = run_offline_sync_pipeline(SCREENER_WATCHLIST, GITHUB_USER, GITHUB_REPO, GITHUB_TOKEN)
-            if total_synced > 0: st.success(f"🔥 SUCCESS! Permanent GitHub Repository synced with {total_synced} live profiles!")
+            if total_synced > 0: 
+                st.success(f"🔥 SUCCESS! Generated and synced {total_synced} items to GitHub root repository!")
+            else:
+                st.error("❌ Sync Refused. Please check if your token has full 'repo' permission or if your repo name is exact.")
 
 elif menu_selection == "🔮 FRESH IPO MONITOR":
     st.markdown("### 🔮 FRESH LISTINGS MONITOR")
