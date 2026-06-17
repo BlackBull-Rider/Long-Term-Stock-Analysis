@@ -2,8 +2,11 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import streamlit as st
+import requests
+import base64
+import json
 import os
+from datetime import datetime
 
 DB_MARKET_FILE = "core/market_data.csv"
 
@@ -39,7 +42,8 @@ def detect_chart_patterns(closes, highs, lows):
             
     return "UPPER TRENDING"
 
-def run_offline_sync_pipeline(ticker_list):
+def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_token):
+    """এক্সচেঞ্জ থেকে ৫০০০ স্টক ক্রাঞ্চ করে সরাসরি গিটহাবে অটো-রাইট করার মূল ইঞ্জিন"""
     formatted_tickers = [f"{t}.NS" if not t.endswith(".NS") else t for t in ticker_list]
     compiled_rows = []
     
@@ -94,14 +98,47 @@ def run_offline_sync_pipeline(ticker_list):
         except: continue
         
     if compiled_rows:
-        os.makedirs(os.path.dirname(DB_MARKET_FILE), exist_ok=True)
-        pd.DataFrame(compiled_rows).to_csv(DB_MARKET_FILE, index=False)
-        return len(compiled_rows)
+        df_market = pd.DataFrame(compiled_rows)
+        csv_string = df_market.to_csv(index=False)
+        
+        # গিটহাব এপিআই-এর মাধ্যমে ফাইল পুশ করার মেকানিজম
+        git_api_url = f"https://api.github.com/repos/{github_user}/{github_repo}/contents/{DB_MARKET_FILE}"
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        sha = None
+        try:
+            res = requests.get(git_api_url, headers=headers, timeout=10)
+            if res.status_code == 200: sha = res.json()["sha"]
+        except: pass
+        
+        encoded_content = base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
+        payload = {
+            "message": "📡 System Big-Data Replicated Locked",
+            "content": encoded_content
+        }
+        if sha: payload["sha"] = sha
+        
+        try:
+            response = requests.put(git_api_url, headers=headers, json=payload, timeout=20)
+            if response.status_code in [200, 201]:
+                return len(compiled_rows)
+        except: pass
+        
     return 0
 
-def load_offline_market_data():
-    if os.path.exists(DB_MARKET_FILE):
-        return pd.read_csv(DB_MARKET_FILE)
+def load_offline_market_data(github_user, github_repo, github_token):
+    git_api_url = f"https://api.github.com/repos/{github_user}/{github_repo}/contents/{DB_MARKET_FILE}"
+    headers = {"Authorization": f"token {github_token}"}
+    try:
+        response = requests.get(git_api_url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            content = response.json()
+            csv_bytes = base64.b64decode(content["content"])
+            return pd.read_csv(io.BytesIO(csv_bytes))
+    except: pass
     return pd.DataFrame()
 
 @st.cache_data(ttl=1800)
