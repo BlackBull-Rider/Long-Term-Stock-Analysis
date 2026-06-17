@@ -8,11 +8,10 @@ import json
 import io
 import os
 from datetime import datetime
-
-# 🎯 CRITICAL INDUSTRIAL FIX: Streamlit ইমপোর্ট করা হলো যাতে @st.cache_data ক্র্যাশ না করে
 import streamlit as st
 
-DB_MARKET_FILE = "core/market_data.csv"
+# রেপোর মেইন রুটে ফাইল রাখার জন্য পাথ কনফিগারেশন
+DB_MARKET_FILE = "market_data.csv"
 
 def calculate_indian_market_charges(price, qty, is_buy=True):
     turnover = price * qty
@@ -47,11 +46,11 @@ def detect_chart_patterns(closes, highs, lows):
     return "UPPER TRENDING"
 
 def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_token):
-    """এক্সচেঞ্জ থেকে ৫০০০ স্টক ক্রাঞ্চ করে সরাসরি গিটহাবে অটো-রাইট করার মূল ইঞ্জিন"""
+    """এক্সচেঞ্জ থেকে লাইভ ডেটা ক্রাঞ্চ করে সরাসরি গিটহাব রুটে রাইট করার ইঞ্জিন"""
     formatted_tickers = [f"{t}.NS" if not t.endswith(".NS") else t for t in ticker_list]
     compiled_rows = []
     
-    chunk_size = 25
+    chunk_size = 30
     for i in range(0, len(formatted_tickers), chunk_size):
         chunk = formatted_tickers[i:i+chunk_size]
         try:
@@ -119,7 +118,7 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
         
         encoded_content = base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
         payload = {
-            "message": "📡 System Big-Data Replicated Locked",
+            "message": "📡 System Stock Data Sync Live",
             "content": encoded_content
         }
         if sha: payload["sha"] = sha
@@ -141,9 +140,6 @@ def load_offline_market_data(github_user, github_repo, github_token):
             content = response.json()
             csv_bytes = base64.b64decode(content["content"])
             return pd.read_csv(io.BytesIO(csv_bytes))
-        elif response.status_code == 404:
-            # 🎯 Egg-or-Chicken সমাধান: ফাইল প্রথমে খুঁজে না পেলে ক্র্যাশ না করে ব্ল্যাঙ্ক ফ্রেম দাও
-            return pd.DataFrame()
     except: pass
     return pd.DataFrame()
 
