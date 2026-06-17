@@ -20,40 +20,48 @@ render_branding_header()
 # =========================================================================
 # 🦅 100% AUTOMATIC HARD-WRITE GITHUB REPOSITORY DATABASE ENGINE
 # =========================================================================
-GITHUB_USER = "BlackBull-Rider"
-GITHUB_REPO = "Long-Term-Stock-Analysis"
-GITHUB_TOKEN = st.secrets["MY_GITHUB_TOKEN"]
+GITHUB_USER = "YOUR_GITHUB_USERNAME"
+GITHUB_REPO = "YOUR_REPOSITORY_NAME"
+
+# 🔐 SECURITY SAFEGUARD: Hardcoded টোকেনের বদলে সরাসরি স্ট্রিমলিট সিক্রেট লকার থেকে চাবি নেওয়া হবে
+if "MY_GITHUB_TOKEN" in st.secrets:
+    GITHUB_TOKEN = st.secrets["MY_GITHUB_TOKEN"]
+else:
+    # ব্যাকআপ হিসেবে যদি কোডে টোকেন বসাতে চাও, তবে নিচে গ্যাপে বসাতে পারো
+    GITHUB_TOKEN = "ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" 
 
 DB_FILE = "portfolio_db.csv"
 API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{DB_FILE}"
 
 def load_permanent_database():
+    if not GITHUB_TOKEN or "XXXX" in GITHUB_TOKEN:
+        return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"])
+        
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     try:
         response = requests.get(API_URL, headers=headers, timeout=10)
         if response.status_code == 200:
             content = response.json()
-            # Base64 ডিকোড করে CSV ডাটা রিড করো
             csv_bytes = base64.b64decode(content["content"])
             df = pd.read_csv(io.BytesIO(csv_bytes))
             df.columns = df.columns.str.strip()
             return df
     except:
         pass
-    return pd.DataFrame(columns=[
-        "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
-        "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"
-    ])
+    return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"])
 
 def save_permanent_database(df):
-    """গুগল শিটের কোনো ঝামেলা ছাড়াই সরাসরি গিটহাব রেপোতে অটো-পুশ করার ইঞ্জিন"""
+    """গিটহাব রিপোজিটরির ভেতর সরাসরি অটো-ফাইল ক্রিয়েশন ও অটো-পুশ ইঞ্জিন"""
+    if not GITHUB_TOKEN or "XXXX" in GITHUB_TOKEN:
+        st.error("❌ GitHub Authentication Token Missing! System Locked.")
+        return
+        
     st.session_state.portfolio_data_store = df
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
     
-    # গিটহাবে ফাইল রাইট করার আগে কারেন্ট ফাইলের SHA বা ট্র্যাক আইডি নিতে হবে
     sha = None
     try:
         res = requests.get(API_URL, headers=headers, timeout=10)
@@ -63,7 +71,6 @@ def save_permanent_database(df):
         pass
         
     csv_string = df.to_csv(index=False)
-    # ডাটাকে গিটহাব কমপ্লায়েন্স Base64 ফরম্যাটে এনকোড করো
     encoded_content = base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
     
     payload = {
@@ -78,9 +85,9 @@ def save_permanent_database(df):
         if response.status_code in [200, 201]:
             st.toast("🎯 Portfolio Database Saved Automatically to GitHub!", icon="🦅")
         else:
-            st.error("⚠️ GitHub API write restriction. Check Repository Name or Token scopes.")
+            st.error(f"⚠️ GitHub API Write Rejected. Status Code: {response.status_code}")
     except:
-        st.error("📡 Git network delay. Transaction cached in running local memory layout.")
+        st.error("📡 Network delay. Core synced in temporarily running session layout.")
 
 # ক্লাউড গিটহাব লাইভ ডেটাবেস সিঙ্ক
 if "portfolio_data_store" not in st.session_state:
@@ -312,7 +319,7 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                     master_df.loc[idx, "Buy Charges"] = float(master_df.loc[idx, "Buy Charges"]) - allocated_b_charge
                     master_df = pd.concat([master_df, pd.DataFrame([{"Stock": stock_name, "Buy Price": buy_p, "Quantity": input_qty, "Buy Date": master_df.loc[idx, "Buy Date"], "Buy Charges": round(allocated_b_charge, 2), "Sell Price": input_price, "Sell Date": str(trade_date), "Sell Charges": s_charges, "Realized P&L": realized_pnl, "Status": "CLOSED"}])], ignore_index=True)
             
-            # 🔥 গিটহাব এপিআই-এর মাধ্যমে সরাসরি রেপোজিটরিতে হার্ড-রাইট পুশ
+            # 🔥 ক্লাউড ডাটাবেস ও গিটহাব এপিআই-এর মাধ্যমে সরাসরি রেপোজিটরিতে হার্ড-রাইট পুশ
             save_permanent_database(master_df)
             st.rerun()
 
