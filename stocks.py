@@ -1,6 +1,42 @@
-# Nifty 500 এবং ভারতের সেরা ৫০০টি স্টকের ওয়াচলিস্ট
-SCREENER_WATCHLIST = [
-    "TIPSINDLTD", "WAAREERTL", "SWARAJENG", "INGERRAND", "TATAMOTORS", "RELIANCE", "INFY", "SHILCHTECH", "CDSL", "HAL",
+# stocks.py
+import requests
+import pandas as pd
+import io
+import streamlit as st
+
+@st.cache_data(ttl=86400)
+def get_live_nse_universe():
+    """Direct exchange endpoint parsing via strict string-stripping protocols"""
+    nse_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    
+    try:
+        session = requests.Session()
+        session.headers.update(headers)
+        response = session.get(nse_url, timeout=15)
+        
+        if response.status_code == 200:
+            csv_data = io.StringIO(response.text)
+            df = pd.read_csv(csv_data)
+            
+            # 🔥 CRITICAL FIX: Strip all invisible leading/trailing whitespaces
+            df.columns = df.columns.str.strip()
+            df['SERIES'] = df['SERIES'].astype(str).str.strip()
+            
+            # Filter strictly for active rolling Equity Series
+            df_eq = df[df['SERIES'] == 'EQ']
+            
+            symbols = df_eq['SYMBOL'].dropna().astype(str).str.strip().tolist()
+            if len(symbols) > 100:
+                return symbols
+    except:
+        pass
+
+    # Dynamic Institutional Backup Watchlist if exchange network throws timeout
+    return [
+            "TIPSINDLTD", "WAAREERTL", "SWARAJENG", "INGERRAND", "TATAMOTORS", "RELIANCE", "INFY", "SHILCHTECH", "CDSL", "HAL",
     "TCS", "HDFCBANK", "ICICIBANK", "BHARTIARTL", "SBIN", "LICI", "ITC", "HINDUNILVR", "LT", "BAJFINANCE",
     "HCLTECH", "MARUTI", "SUNPHARMA", "ADANIENT", "KOTAKBANK", "TITAN", "AXISBANK", "ULTRACEMCO", "NTPC", "ONGC",
     "POWERGRID", "ASIANPAINT", "COALINDIA", "BAJAJFINSV", "M&M", "JSWSTEEL", "JIOFIN", "ADANIPORTS", "IRFC", "BPCL",
@@ -47,3 +83,8 @@ SCREENER_WATCHLIST = [
     "KAJARIACER", "SOMANYCERA", "ORIENTBELL", "EXXARO", "NITCO", "AGL", "CERAMIC", "TILES", "SANWRE", "VITRA",
     "SUPREMEIND", "ASTRAL", "PRINCEPIPE", "FINPIPE", "JAINIRRIG", "RESPONIND", "KISAN", "PLASTBLENDS", "XPROINDIA", "KINGFA"
 ]
+
+# Export clean assignment list to system layout
+SCREENER_WATCHLIST = get_live_nse_universe()
+
+
