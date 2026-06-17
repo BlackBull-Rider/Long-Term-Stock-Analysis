@@ -43,7 +43,7 @@ API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{D
 def load_permanent_database():
     if not GITHUB_TOKEN or GITHUB_TOKEN == "XXXX":
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"])
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"} # Fixed to Bearer
     try:
         response = requests.get(API_URL, headers=headers, timeout=10)
         if response.status_code == 200:
@@ -56,7 +56,7 @@ def load_permanent_database():
 
 def save_permanent_database(df):
     if not GITHUB_TOKEN or GITHUB_TOKEN == "XXXX": return
-    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"} # Fixed to Bearer
     sha = None
     try:
         res = requests.get(API_URL, headers=headers, timeout=10)
@@ -71,6 +71,7 @@ def save_permanent_database(df):
     if sha: payload["sha"] = sha
     try: requests.put(API_URL, headers=headers, json=payload, timeout=15)
     except Exception: pass
+
 
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = load_permanent_database()
