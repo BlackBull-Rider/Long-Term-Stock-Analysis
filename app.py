@@ -85,7 +85,7 @@ for required_col in ["Buy Price", "Quantity", "Buy Charges", "Sell Price", "Sell
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
 closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
-# 🎯 ২. GLITCH FIX CALLBACK FUNCTION: বাটন টিপলে সবার আগে এটি ব্যাকগ্রাউন্ডে লগ বাফার পুরোপুরি মুছে দেবে
+# GLITCH FIX CALLBACK FUNCTION
 def clear_logs_callback():
     st.session_state.live_logs = []
 
@@ -96,8 +96,6 @@ st.markdown("### 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS")
 with st.expander("📂 OPEN LIVE SYSTEM HARDWARE TERMINAL CONSOLE", expanded=True):
     col_t1, col_t2 = st.columns([4, 1])
     col_t1.write(f"**NSE Dynamic Array Streams:** `{len(SCREENER_WATCHLIST)} Tickers Locked` | **GitHub Bridge Status:** `{masked_token}`")
-    
-    # 🎯 ৩. অন-ক্লিক কলব্যাক মেকানিজম লক করা হলো (কোনো রিফ্রেশ গ্লিচ হবে না)
     col_t2.button("🧹 Clear Terminal Logs", on_click=clear_logs_callback, key="ultimate_clear_logs_btn")
         
     logs_list = st.session_state.get("live_logs", [])
@@ -121,25 +119,31 @@ menu_selection = st.sidebar.radio(
     key="navigation_sidebar_radio"
 )
 
+# 🎯 SCREENER OUTPUT COLUMNS DEFINITION
 ALL_METRICS_COLS = [
     "Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", 
     "Sales Growth (%)", "Gross Margin (%)", "Inventory Speed (x)", 
     "Promoter (%)", "Institutions (%)", "Max DD (%)", "EMA200 Dist (%)"
 ]
 
-def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200):
+# 🎯 100% BULLETPROOF SCREENER FILTER ENGINE (THE ABSOLUTE QUANT FIX)
+def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200, additional_moat_filter=False, min_gross_margin=0.0, min_inventory_speed=0.0):
     add_log("Searching database index array...", "INFO")
     raw_df = load_offline_market_data(GITHUB_USER, GITHUB_REPO, GITHUB_TOKEN)
+    
     if raw_df.empty:
         add_log("Scan Failed: Missing market_data.csv on GitHub root.", "ERROR")
         st.error("⚠️ Local data index is vacant. Execute sync loop in 'SYSTEM HARDWARE SYNC' first.")
         return
         
     try:
-        for col in ["Sales Growth (%)", "ROE (%)", "Market Cap (Cr)", "Promoter (%)", "EMA200 Dist (%)", "P/E Ratio"]:
+        # Secure strict numeric conversion to prevent formatting/filtering bypass bugs
+        numeric_cols = ["Sales Growth (%)", "ROE (%)", "Market Cap (Cr)", "Promoter (%)", "EMA200 Dist (%)", "P/E Ratio", "Gross Margin (%)", "Inventory Speed (x)", "CMP (₹)"]
+        for col in numeric_cols:
             if col in raw_df.columns:
                 raw_df[col] = pd.to_numeric(raw_df[col], errors='coerce').fillna(0.0)
                 
+        # Base Quantum Rules Filtering
         q_df = raw_df[
             (raw_df["Sales Growth (%)"] >= float(min_sales)) & 
             (raw_df["ROE (%)"] >= float(min_roe)) & 
@@ -147,14 +151,31 @@ def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promot
             (raw_df["Promoter (%)"] >= float(min_promoter)) & 
             (raw_df["EMA200 Dist (%)"] >= float(min_ema200))
         ]
-        if max_pe > 0: q_df = q_df[q_df["P/E Ratio"] <= float(max_pe)]
+        
+        # Upper P/E Valuation Limit logic
+        if float(max_pe) > 0:
+            q_df = q_df[q_df["P/E Ratio"] <= float(max_pe)]
+            
+        # Advanced Moat Hunter parameters integration
+        if additional_moat_filter:
+            q_df = q_df[
+                (q_df["Gross Margin (%)"] >= float(min_gross_margin)) &
+                (q_df["Inventory Speed (x)"] >= float(min_inventory_speed))
+            ]
             
         if not q_df.empty:
-            add_log(f"Isolated {len(q_df)} matrix tickers.", "SUCCESS")
-            st.dataframe(q_df[ALL_METRICS_COLS], use_container_width=True)
+            add_log(f"Isolated {len(q_df)} matching configurations out of the active asset universe.", "SUCCESS")
+            st.success(f"🎯 Query Processed. Isolated {len(q_df)} High-Probability Target Assets.")
+            
+            # Formulate and render safe matching layout columns
+            render_cols = [c for c in ALL_METRICS_COLS if c in q_df.columns]
+            st.dataframe(q_df[render_cols].reset_index(drop=True), use_container_width=True)
         else:
-            st.warning("No assets matched parameters.")
-    except Exception as e: add_log(f"Screener execution fault: {str(e)}", "ERROR")
+            add_log("Filter layer closed. Zero matching assets located.", "WARNING")
+            st.warning("No stocks match the specified quantitative parameters.")
+    except Exception as e: 
+        add_log(f"Screener engine execution structural fault: {str(e)}", "ERROR")
+        st.error(f"Engine Exception: {str(e)}")
 
 # =========================================================================
 # MODULE 1: 📊 PORTFOLIO ANALYTICS
@@ -216,27 +237,41 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
         st.markdown("#### 📋 LIVE ASSET INVENTORY EXPANSION SLOTS")
         st.dataframe(active_portfolio[["Stock", "Quantity", "Buy Price", "CMP (₹)", "Total Invested", "Current Value", "Unrealized P&L"]], use_container_width=True)
 
+# =========================================================================
+# MODULE 2: 🔍 LIVE SCREENER CORE (FIXED)
+# =========================================================================
 elif menu_selection == "🔍 LIVE SCREENER CORE":
-    st.subheader("🦅 CORE BATCH QUANT MATRIX")
+    st.subheader("🦅 CORE BATCH QUANT MATRIX SCREENER")
     c1, c2 = st.columns(2)
-    min_sales = c1.number_input("Minimum Revenue Growth (%)", value=15.0)
-    min_roe = c2.number_input("Minimum Return On Equity (%)", value=15.0)
+    min_sales = c1.number_input("Minimum Revenue Growth (%)", value=15.0, step=1.0)
+    min_roe = c2.number_input("Minimum Return On Equity (%)", value=15.0, step=1.0)
     c3, c4 = st.columns(2)
-    max_pe = c3.number_input("Maximum P/E Ratio Limit", value=40.0)
-    min_mcap = c4.number_input("Minimum Market Cap (Cr)", value=500.0)
+    max_pe = c3.number_input("Maximum P/E Ratio Limit (0 for No Limit)", value=40.0, step=1.0)
+    min_mcap = c4.number_input("Minimum Market Cap (Cr)", value=1000.0, step=500.0)
     c5, c6 = st.columns(2)
-    min_promoter = c5.number_input("Minimum Promoter Ownership (%)", value=40.0)
-    min_ema200_dist = c6.number_input("Minimum distance from 200 EMA (%)", value=1.0)
+    min_promoter = c5.number_input("Minimum Promoter Ownership (%)", value=40.0, step=5.0)
+    min_ema200_dist = c6.number_input("Minimum Cushion distance from 200 EMA (%)", value=1.0, step=0.5)
+    
     if st.button("EXECUTE SCALPER BATCH DATA CORE SCAN"):
         execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200_dist)
 
+# =========================================================================
+# MODULE 3: 🚀 MONSTER MOAT HUNT (FIXED)
+# =========================================================================
 elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
-    st.subheader("🔥 HIGH-ALPHA VECTOR MONSTER MOAT RADAR")
+    st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT MULTIBAGGER SCALPER")
     c1, c2 = st.columns(2)
-    min_sales = c1.number_input("Super-Normal Revenue Threshold Growth (%)", value=25.0)
-    min_roe = c2.number_input("High-Monopoly Target ROE (%)", value=25.0)
+    min_sales = c1.number_input("Super-Normal Revenue Threshold Growth (%)", value=25.0, step=1.0)
+    min_roe = c2.number_input("High-Monopoly Operating Target ROE (%)", value=25.0, step=1.0)
+    c3, c4 = st.columns(2)
+    min_gross_margin = c3.number_input("Pricing Premium Power (Minimum Gross Margin %)", value=45.0, step=5.0)
+    min_inventory_speed = c4.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", value=6.0, step=1.0)
+    c5, c6 = st.columns(2)
+    max_pe = c5.number_input("Maximum Multiples Cap (0 for No Limit)", value=35.0, step=1.0)
+    min_mcap = c6.number_input("Minimum Threshold Market Cap (Cr)", value=1000.0, step=500.0)
+    
     if st.button("LAUNCH MONSTER SCAN OVER 5000+ SECURITIES"):
-        execute_quant_filter_engine(min_sales, min_roe, 35.0, 1000.0, 45.0, 2.5)
+        execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, 45.0, 2.5, additional_moat_filter=True, min_gross_margin=min_gross_margin, min_inventory_speed=min_inventory_speed)
 
 # =========================================================================
 # MODULE 4: 📥 TRANSACTION EXECUTION UNIT
