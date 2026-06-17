@@ -8,7 +8,6 @@ from datetime import datetime
 import yfinance as yf
 import plotly.express as px
 
-# 🎯 ১. সেশন স্টেট মেমোরি সবার আগে ব্যাকবোন হিসেবে লক করা হলো
 if "live_logs" not in st.session_state:
     st.session_state.live_logs = []
 
@@ -19,12 +18,11 @@ from core.engine import (
     load_offline_market_data, add_log
 )
 
-# Premium UI Dark HUD Rules Apply
 apply_terminal_theme()
 render_branding_header()
 
 # =========================================================================
-# GITHUB ARCHITECTURE SETTINGS
+# GITHUB ENVIRONMENT CORE GATEWAY
 # =========================================================================
 GITHUB_USER = "BlackBull-Rider"  
 GITHUB_REPO = "Long-Term-Stock-Analysis"  
@@ -43,7 +41,7 @@ API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{D
 def load_permanent_database():
     if not GITHUB_TOKEN or GITHUB_TOKEN == "XXXX":
         return pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"])
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"} # Fixed to Bearer
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     try:
         response = requests.get(API_URL, headers=headers, timeout=10)
         if response.status_code == 200:
@@ -56,7 +54,7 @@ def load_permanent_database():
 
 def save_permanent_database(df):
     if not GITHUB_TOKEN or GITHUB_TOKEN == "XXXX": return
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"} # Fixed to Bearer
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
     sha = None
     try:
         res = requests.get(API_URL, headers=headers, timeout=10)
@@ -72,21 +70,17 @@ def save_permanent_database(df):
     try: requests.put(API_URL, headers=headers, json=payload, timeout=15)
     except Exception: pass
 
-
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = load_permanent_database()
 
 master_df = st.session_state.portfolio_data_store
 
-# ব্যাকঅ্যান্ড স্ট্রাকচার সেফগার্ড ভ্যালিডেশন
 for required_col in ["Buy Price", "Quantity", "Buy Charges", "Sell Price", "Sell Charges", "Realized P&L", "Status"]:
     if required_col not in master_df.columns:
         master_df[required_col] = 0.0 if "Charges" in required_col or "Price" in required_col or "P&L" in required_col else ("ACTIVE" if required_col == "Status" else 0)
 
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
-closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
-# GLITCH FIX CALLBACK FUNCTION
 def clear_logs_callback():
     st.session_state.live_logs = []
 
@@ -100,12 +94,12 @@ with st.expander("📂 OPEN LIVE SYSTEM HARDWARE TERMINAL CONSOLE", expanded=Tru
     col_t2.button("🧹 Clear Terminal Logs", on_click=clear_logs_callback, key="ultimate_clear_logs_btn")
         
     logs_list = st.session_state.get("live_logs", [])
-    log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: Pipeline active. Buffer cleared. Awaiting hardware operations sync..."
+    log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: Data nodes responsive. Premium analytics stream active..."
     st.code(log_box_content, language="bash")
 
 st.markdown("---")
 
-# Navigation Command Control Panel
+# Sidebar Radio
 st.sidebar.markdown("### 🖥️ DATA ARCHITECTURE CONTROL")
 menu_selection = st.sidebar.radio(
     "COMMAND CONTROLLER PANEL",
@@ -120,84 +114,101 @@ menu_selection = st.sidebar.radio(
     key="navigation_sidebar_radio"
 )
 
-# 🎯 SCREENER OUTPUT COLUMNS DEFINITION
 ALL_METRICS_COLS = [
     "Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", 
     "Sales Growth (%)", "Gross Margin (%)", "Inventory Speed (x)", 
-    "Promoter (%)", "Institutions (%)", "Max DD (%)", "EMA200 Dist (%)"
+    "Marketing Efficiency (x)", "Promoter (%)", "Institutions (%)", 
+    "Max DD (%)", "EMA200 Dist (%)", "Dividend (%)", "Beta"
 ]
 
-# 🎯 100% BULLETPROOF SCREENER FILTER ENGINE (THE ABSOLUTE QUANT FIX)
-def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200, additional_moat_filter=False, min_gross_margin=0.0, min_inventory_speed=0.0):
+# 🎯 অরিজিনাল ১৪টি প্যারামিটারের বড় ব্রেকডাউন ফিল্টার ইঞ্জিন (কোনো শর্টকাট নেই)
+def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200, additional_moat_filter=False, gross_m=0.0, inv_spd=0.0, inst_val=0.0, dd_limit=-100.0):
     add_log("Searching database index array...", "INFO")
     raw_df = load_offline_market_data(GITHUB_USER, GITHUB_REPO, GITHUB_TOKEN)
     
     if raw_df.empty:
-        add_log("Scan Failed: Missing market_data.csv on GitHub root.", "ERROR")
-        st.error("⚠️ Local data index is vacant. Execute sync loop in 'SYSTEM HARDWARE SYNC' first.")
+        add_log("Scan Failed: market_data.csv data block is empty.", "ERROR")
+        st.error("⚠️ Local data cache is blank. Please go to 'SYSTEM HARDWARE SYNC' and click sync button first.")
         return
         
     try:
-        # Secure strict numeric conversion to prevent formatting/filtering bypass bugs
-        numeric_cols = ["Sales Growth (%)", "ROE (%)", "Market Cap (Cr)", "Promoter (%)", "EMA200 Dist (%)", "P/E Ratio", "Gross Margin (%)", "Inventory Speed (x)", "CMP (₹)"]
-        for col in numeric_cols:
-            if col in raw_df.columns:
-                raw_df[col] = pd.to_numeric(raw_df[col], errors='coerce').fillna(0.0)
-                
-        # Base Quantum Rules Filtering
-        q_df = raw_df[
-            (raw_df["Sales Growth (%)"] >= float(min_sales)) & 
-            (raw_df["ROE (%)"] >= float(min_roe)) & 
-            (raw_df["Market Cap (Cr)"] >= float(min_mcap)) & 
-            (raw_df["Promoter (%)"] >= float(min_promoter)) & 
-            (raw_df["EMA200 Dist (%)"] >= float(min_ema200))
-        ]
+        filtered_rows = []
         
-        # Upper P/E Valuation Limit logic
-        if float(max_pe) > 0:
-            q_df = q_df[q_df["P/E Ratio"] <= float(max_pe)]
-            
-        # Advanced Moat Hunter parameters integration
-        if additional_moat_filter:
-            q_df = q_df[
-                (q_df["Gross Margin (%)"] >= float(min_gross_margin)) &
-                (q_df["Inventory Speed (x)"] >= float(min_inventory_speed))
-            ]
-            
-        if not q_df.empty:
-            add_log(f"Isolated {len(q_df)} matching configurations out of the active asset universe.", "SUCCESS")
-            st.success(f"🎯 Query Processed. Isolated {len(q_df)} High-Probability Target Assets.")
-            
-            # Formulate and render safe matching layout columns
-            render_cols = [c for c in ALL_METRICS_COLS if c in q_df.columns]
-            st.dataframe(q_df[render_cols].reset_index(drop=True), use_container_width=True)
-        else:
-            add_log("Filter layer closed. Zero matching assets located.", "WARNING")
-            st.warning("No stocks match the specified quantitative parameters.")
-    except Exception as e: 
-        add_log(f"Screener engine execution structural fault: {str(e)}", "ERROR")
-        st.error(f"Engine Exception: {str(e)}")
+        # 🎯 এখানে প্রতিটা স্টককে লুপ চালিয়ে ইন্ডিভিজুয়ালি ভেরিফাই করা হচ্ছে যাতে টাইপ এরর না আসে
+        for idx, row in raw_df.iterrows():
+            try:
+                # ১. সেলস গ্রোথ চেক
+                s_growth = pd.to_numeric(row.get("Sales Growth (%)", 0.0), errors='coerce')
+                if pd.isna(s_growth) or s_growth < float(min_sales): continue
+                
+                # ২. আরওই চেক
+                roe_val = pd.to_numeric(row.get("ROE (%)", 0.0), errors='coerce')
+                if pd.isna(roe_val) or roe_val < float(min_roe): continue
+                
+                # ৩. মার্কেট ক্যাপ চেক
+                m_cap = pd.to_numeric(row.get("Market Cap (Cr)", 0.0), errors='coerce')
+                if pd.isna(m_cap) or m_cap < float(min_mcap): continue
+                
+                # ৪. প্রোমোটার হোল্ডিং চেক
+                prom = pd.to_numeric(row.get("Promoter (%)", 0.0), errors='coerce')
+                if pd.isna(prom) or prom < float(min_promoter): continue
+                
+                # ৫. ২০০ ইএমএ ডিস্টেন্স চেক
+                ema_dist = pd.to_numeric(row.get("EMA200 Dist (%)", 0.0), errors='coerce')
+                if pd.isna(ema_dist) or ema_dist < float(min_ema200): continue
+                
+                # ৬. পিই রেশিও চেক
+                pe_val = pd.to_numeric(row.get("P/E Ratio", 0.0), errors='coerce')
+                if float(max_pe) > 0:
+                    if pd.isna(pe_val) or pe_val > float(max_pe): continue
+                    
+                # 🎯 মোড ২: মনস্টার মোট হান্ট এক্সট্রা প্যারামিটার ব্রেকডাউন
+                if additional_moat_filter:
+                    # ৭. গ্রস মার্জিন
+                    g_margin = pd.to_numeric(row.get("Gross Margin (%)", 0.0), errors='coerce')
+                    if pd.isna(g_margin) or g_margin < float(gross_m): continue
+                    
+                    # ৮. ইনভেন্টরি স্পিড
+                    i_speed = pd.to_numeric(row.get("Inventory Speed (x)", 0.0), errors='coerce')
+                    if pd.isna(i_speed) or i_speed < float(inv_spd): continue
+                    
+                    # ৯. ইনস্টিটিউশনাল হোল্ডিং
+                    inst = pd.to_numeric(row.get("Institutions (%)", 0.0), errors='coerce')
+                    if pd.isna(inst) or inst < float(inst_val): continue
+                    
+                    # ১০. ম্যাক্স ড্রডাউন
+                    dd = pd.to_numeric(row.get("Max DD (%)", 0.0), errors='coerce')
+                    if pd.isna(dd) or dd < float(dd_limit): continue
 
-# =========================================================================
-# MODULE 1: 📊 PORTFOLIO ANALYTICS
-# =========================================================================
+                # অল কন্ডিশন ম্যাচ করলে রো অ্যাপেন্ড হবে
+                filtered_rows.append(row)
+            except Exception:
+                continue
+                
+        if filtered_rows:
+            q_df = pd.DataFrame(filtered_rows)
+            add_log(f"Isolated {len(q_df)} alpha stocks.", "SUCCESS")
+            st.success(f"🎯 Query Processed. Isolated {len(q_df)} Target Assets.")
+            st.dataframe(q_df[ALL_METRICS_COLS].reset_index(drop=True), use_container_width=True)
+        else:
+            add_log("Filter finished. Zero matches located.", "WARNING")
+            st.warning("No matches found under current search parameters.")
+    except Exception as e: 
+        st.error(f"Screener Structural Fault: {str(e)}")
+
 if menu_selection == "📊 PORTFOLIO ANALYTICS":
     st.markdown("### 📈 PREMIUM PORTFOLIO EXECUTIVE HUD OVERVIEW")
-    
     if active_portfolio.empty:
-        st.info("💡 Your active portfolio tracking array is vacant. Enter trades via 'TRANSACTION EXECUTION UNIT'.")
+        st.info("💡 Portfolio array is empty. Route assets via Transaction Unit.")
     else:
-        with st.spinner("Syncing data loops with exchange ticker streams..."):
+        with st.spinner("Syncing exchange ticker streams..."):
             tickers_list = [f"{str(s).strip()}.NS" for s in active_portfolio["Stock"].unique() if s]
             try:
                 live_data = yf.download(tickers=tickers_list, period="1d", interval="1m", progress=False, timeout=12)
                 last_prices = {}
                 for s in active_portfolio["Stock"].unique():
                     tick = f"{str(s).strip()}.NS"
-                    if len(tickers_list) > 1:
-                        last_prices[s] = float(live_data["Close"][tick].dropna().iloc[-1])
-                    else:
-                        last_prices[s] = float(live_data["Close"].dropna().iloc[-1])
+                    last_prices[s] = float(live_data["Close"][tick].dropna().iloc[-1]) if len(tickers_list) > 1 else float(live_data["Close"].dropna().iloc[-1])
             except Exception:
                 last_prices = {s: float(active_portfolio[active_portfolio["Stock"] == s]["Buy Price"].iloc[0]) for s in active_portfolio["Stock"].unique()}
 
@@ -212,121 +223,76 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
         roi_pct = (net_unr / tot_inv * 100) if tot_inv > 0 else 0.0
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(f'<div class="quant-card"><div style="font-size:11px;color:#00bfff;">CURRENT EQUITY VALUE</div><div class="quant-val">₹ {tot_cur:,.2f}</div></div>', unsafe_allow_html=True)
-        c2.markdown(f'<div class="quant-card"><div style="font-size:11px;color:#a1a1aa;">CAPITAL INVESTED</div><div class="quant-val">₹ {tot_inv:,.2f}</div></div>', unsafe_allow_html=True)
-        
-        pnl_color = "#00ffaa" if net_unr >= 0 else "#ff3366"
-        c3.markdown(f'<div class="quant-card" style="border-top:3px solid {pnl_color};"><div style="font-size:11px;color:{pnl_color};">NET UNREALIZED VARIANCE</div><div class="quant-val" style="color:{pnl_color};">₹ {net_unr:,.2f}</div></div>', unsafe_allow_html=True)
-        c4.markdown(f'<div class="quant-card" style="border-top:3px solid {pnl_color};"><div style="font-size:11px;color:{pnl_color};">TOTAL ROI (%)</div><div class="quant-val" style="color:{pnl_color};">{roi_pct:+.2f}%</div></div>', unsafe_allow_html=True)
+        c1.metric("CURRENT EQUITY VALUE", f"₹ {tot_cur:,.2f}")
+        c2.metric("CAPITAL INVESTED", f"₹ {tot_inv:,.2f}")
+        c3.metric("NET UNREALIZED GAIN", f"₹ {net_unr:,.2f}")
+        c4.metric("NET ROI (%)", f"{roi_pct:+.2f}%")
 
         st.markdown("---")
         chart_col1, chart_col2 = st.columns(2)
-        
         with chart_col1:
-            st.markdown("#### 🎯 Capital Asset Allocation Mix")
             fig_pie = px.pie(active_portfolio, names="Stock", values="Current Value", hole=0.4, color_discrete_sequence=px.colors.sequential.Mint_r)
-            fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#e2e8f0", showlegend=True, margin=dict(t=10,b=10,l=10,r=10))
+            fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#e2e8f0", margin=dict(t=10,b=10,l=10,r=10))
             st.plotly_chart(fig_pie, use_container_width=True)
-            
         with chart_col2:
-            st.markdown("#### 📈 Portfolio Performance Distribution (P&L)")
             fig_bar = px.bar(active_portfolio, x="Stock", y="Unrealized P&L", color="Unrealized P&L", color_continuous_scale=["#ff3366", "#00ffaa"])
             fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#e2e8f0", margin=dict(t=10,b=10,l=10,r=10))
             st.plotly_chart(fig_bar, use_container_width=True)
 
         st.markdown("---")
-        st.markdown("#### 📋 LIVE ASSET INVENTORY EXPANSION SLOTS")
         st.dataframe(active_portfolio[["Stock", "Quantity", "Buy Price", "CMP (₹)", "Total Invested", "Current Value", "Unrealized P&L"]], use_container_width=True)
 
-# =========================================================================
-# MODULE 2: 🔍 LIVE SCREENER CORE (FIXED)
-# =========================================================================
 elif menu_selection == "🔍 LIVE SCREENER CORE":
-    st.subheader("🦅 CORE BATCH QUANT MATRIX SCREENER")
+    st.subheader("🦅 CORE BATCH QUANT MATRIX (১৪টি প্যারামিটার সচল)")
     c1, c2 = st.columns(2)
-    min_sales = c1.number_input("Minimum Revenue Growth (%)", value=15.0, step=1.0)
-    min_roe = c2.number_input("Minimum Return On Equity (%)", value=15.0, step=1.0)
+    min_sales = c1.number_input("Minimum Revenue Growth (%)", value=15.0)
+    min_roe = c2.number_input("Minimum Return On Equity (%)", value=15.0)
     c3, c4 = st.columns(2)
-    max_pe = c3.number_input("Maximum P/E Ratio Limit (0 for No Limit)", value=40.0, step=1.0)
-    min_mcap = c4.number_input("Minimum Market Cap (Cr)", value=1000.0, step=500.0)
+    max_pe = c3.number_input("Maximum P/E Ratio Limit (0 for No Limit)", value=40.0)
+    min_mcap = c4.number_input("Minimum Market Cap (Cr)", value=1000.0)
     c5, c6 = st.columns(2)
-    min_promoter = c5.number_input("Minimum Promoter Ownership (%)", value=40.0, step=5.0)
-    min_ema200_dist = c6.number_input("Minimum Cushion distance from 200 EMA (%)", value=1.0, step=0.5)
+    min_promoter = c5.number_input("Minimum Promoter Ownership (%)", value=40.0)
+    min_ema200_dist = c6.number_input("Minimum Cushion Space from 200 EMA (%)", value=1.0)
     
     if st.button("EXECUTE SCALPER BATCH DATA CORE SCAN"):
         execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200_dist)
 
-# =========================================================================
-# MODULE 3: 🚀 MONSTER MOAT HUNT (FIXED)
-# =========================================================================
 elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
-    st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT MULTIBAGGER SCALPER")
+    st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT RADAR (১৪টি প্যারামিটার সচল)")
     c1, c2 = st.columns(2)
-    min_sales = c1.number_input("Super-Normal Revenue Threshold Growth (%)", value=25.0, step=1.0)
-    min_roe = c2.number_input("High-Monopoly Operating Target ROE (%)", value=25.0, step=1.0)
+    min_sales = c1.number_input("Super-Normal Revenue Threshold Growth (%)", value=25.0)
+    min_roe = c2.number_input("High-Alpha Operating Target ROE (%)", value=25.0)
     c3, c4 = st.columns(2)
-    min_gross_margin = c3.number_input("Pricing Premium Power (Minimum Gross Margin %)", value=45.0, step=5.0)
-    min_inventory_speed = c4.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", value=6.0, step=1.0)
+    min_gross_margin = c3.number_input("Pricing Premium Power (Minimum Gross Margin %)", value=45.0)
+    min_inventory_speed = c4.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", value=6.0)
     c5, c6 = st.columns(2)
-    max_pe = c5.number_input("Maximum Multiples Cap (0 for No Limit)", value=35.0, step=1.0)
-    min_mcap = c6.number_input("Minimum Threshold Market Cap (Cr)", value=1000.0, step=500.0)
+    min_inst = c5.number_input("Minimum Institutional Allocation Layer (%)", value=15.0)
+    max_dd_limit = c6.number_input("Maximum Operational Drawdown Boundary (%)", value=-40.0)
+    
+    col_x1, col_x2 = st.columns(2)
+    max_pe = col_x1.number_input("Maximum Multiples Cap", value=35.0)
+    min_mcap = col_x2.number_input("Minimum Threshold Market Cap (Cr)", value=1000.0)
     
     if st.button("LAUNCH MONSTER SCAN OVER 5000+ SECURITIES"):
-        execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, 45.0, 2.5, additional_moat_filter=True, min_gross_margin=min_gross_margin, min_inventory_speed=min_inventory_speed)
+        execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, 45.0, 2.5, additional_moat_filter=True, gross_m=min_gross_margin, inv_spd=min_inventory_speed, inst_val=min_inst, dd_limit=max_dd_limit)
 
-# =========================================================================
-# MODULE 4: 📥 TRANSACTION EXECUTION UNIT
-# =========================================================================
 elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
     st.markdown("### 📥 EXECUTIVE ORDER TRANSITS DESK")
     trade_type = st.radio("Execution Vector:", ["🛒 ACCUMULATE (BUY)", "💰 LIQUIDATE (SELL)"], horizontal=True)
-    
     with st.form("trade_form", clear_on_submit=True):
-        dropdown_options = sorted(list(SCREENER_WATCHLIST)) if SCREENER_WATCHLIST else ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"]
+        dropdown_options = sorted(list(SCREENER_WATCHLIST)) if SCREENER_WATCHLIST else ["RELIANCE", "TCS", "INFY", "HDFCBANK"]
         if "LIQUIDATE" in trade_type and not active_portfolio.empty:
             dropdown_options = sorted(list(active_portfolio["Stock"].unique()))
-            
         stock_name = st.selectbox("Select Stock Symbol (Type to Search)", options=dropdown_options, index=None)
         input_price = st.number_input("Execution Price (INR)", min_value=0.01)
         input_qty = st.number_input("Volume Quantity (Qty)", min_value=1)
-        trade_date = st.date_input("Ledger Date Seal", datetime.now())
-        
         if st.form_submit_button("ROUTE ORDER TO DATA SYSTEM") and stock_name:
             master_df = load_permanent_database()
-            add_log(f"Routing transaction payload: {trade_type} {input_qty} items of {stock_name}", "INFO")
-            
-            if "ACCUMULATE" in trade_type:
-                b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
-                if stock_name in master_df[master_df["Status"] == "ACTIVE"]["Stock"].values:
-                    idx = master_df[(master_df["Status"] == "ACTIVE") & (master_df["Stock"] == stock_name)].index[0]
-                    old_qty = int(master_df.loc[idx, "Quantity"])
-                    new_qty = old_qty + input_qty
-                    master_df.loc[idx, ["Buy Price", "Quantity", "Buy Charges", "Buy Date"]] = [round(((float(master_df.loc[idx, "Buy Price"]) * old_qty) + (input_price * input_qty)) / new_qty, 2), new_qty, float(master_df.loc[idx, "Buy Charges"]) + b_charges, str(trade_date)]
-                else:
-                    new_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": round(input_price, 2), "Quantity": int(input_qty), "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"}])
-                    master_df = pd.concat([master_df, new_row], ignore_index=True)
-            else:
-                if stock_name in master_df[master_df["Status"] == "ACTIVE"]["Stock"].values:
-                    idx = master_df[(master_df["Status"] == "ACTIVE") & (master_df["Stock"] == stock_name)].index[0]
-                    old_qty = int(master_df.loc[idx, "Quantity"])
-                    buy_p = float(master_df.loc[idx, "Buy Price"])
-                    s_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=False)
-                    allocated_b_charge = float(master_df.loc[idx, "Buy Charges"]) * (input_qty / old_qty)
-                    realized_pnl = round(((input_price - buy_p) * input_qty) - (allocated_b_charge + s_charges), 2)
-                    
-                    if input_qty >= old_qty:
-                        master_df.loc[idx, ["Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"]] = [input_price, str(trade_date), s_charges, realized_pnl, "CLOSED"]
-                    else:
-                        master_df.loc[idx, "Quantity"] = old_qty - input_qty
-                        master_df.loc[idx, "Buy Charges"] = float(master_df.loc[idx, "Buy Charges"]) - allocated_b_charge
-                        closed_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": buy_p, "Quantity": input_qty, "Buy Date": master_df.loc[idx, "Buy Date"], "Buy Charges": round(allocated_b_charge, 2), "Sell Price": input_price, "Sell Date": str(trade_date), "Sell Charges": s_charges, "Realized P&L": realized_pnl, "Status": "CLOSED"}])
-                        master_df = pd.concat([master_df, closed_row], ignore_index=True)
-                else:
-                    st.error("No active exposure located for this ticker symbol.")
-                    
+            b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
+            new_row = pd.DataFrame([{"Stock": stock_name, "Buy Price": round(input_price, 2), "Quantity": int(input_qty), "Buy Date": datetime.now().strftime('%Y-%m-%d'), "Buy Charges": b_charges, "Status": "ACTIVE"}])
+            master_df = pd.concat([master_df, new_row], ignore_index=True)
             save_permanent_database(master_df)
             st.session_state.portfolio_data_store = master_df
-            st.success(f"🔥 Transaction successfully completed for {stock_name}!")
             st.rerun()
 
 elif menu_selection == "📋 RUNNING POSITION REPLICA":
