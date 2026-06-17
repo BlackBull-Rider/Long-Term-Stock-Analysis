@@ -55,7 +55,7 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
         progress_bar.progress(min(1.0, i / total_tickers))
         
         try:
-            # Multi-threading enabled, dynamic multi-index grouping fixed via ticker extraction logic
+            # Multi-threading enabled
             data = yf.download(tickers=chunk, period="2y", interval="1wk", group_by="ticker", threads=True, progress=False, timeout=20)
             
             if data.empty:
@@ -63,9 +63,17 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
                 
             for ticker in chunk:
                 try:
-                    # 🎯 FIXED MULTI-INDEX BREAKDOWN BAG: Extracting single ticker dataframe safely
+                    # 🎯 FIXED MULTI-INDEX EXTRACTOR: Dynamically handles column level variations
                     if len(chunk) > 1:
-                        if ticker in data.columns.get_level_values(0):
+                        if ('Close', ticker) in data.columns:
+                            # Level 0 is Price, Level 1 is Ticker
+                            tick_data = pd.DataFrame({
+                                'Close': data[('Close', ticker)],
+                                'High': data[('High', ticker)],
+                                'Low': data[('Low', ticker)]
+                            }).dropna(subset=['Close'])
+                        elif ticker in data.columns.levels[0]:
+                            # Old structure fallback
                             tick_data = data[ticker].dropna(subset=['Close'])
                         else:
                             continue
