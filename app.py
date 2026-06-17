@@ -8,7 +8,7 @@ from datetime import datetime
 import yfinance as yf
 import plotly.express as px
 
-# 🎯 ১. সেশন স্টেট মেমোরি সবার আগে ব্যাকবোন হিসেবে লক করা হলো
+# 🎯 ১. সেশন স্টেট ব্যাকবোন সবার আগে ভ্যালিডেট করা হলো (লগ ক্লিয়ারিং সেফগার্ড সহ)
 if "live_logs" not in st.session_state:
     st.session_state.live_logs = []
 
@@ -19,12 +19,12 @@ from core.engine import (
     load_offline_market_data, add_log
 )
 
-# Premium UI Dark HUD Rules Apply
+# Premium UI Theme Setup
 apply_terminal_theme()
 render_branding_header()
 
 # =========================================================================
-# GITHUB ARCHITECTURE SETTINGS
+# GITHUB ENVIRONMENT CORE GATEWAY
 # =========================================================================
 GITHUB_USER = "BlackBull-Rider"  
 GITHUB_REPO = "Long-Term-Stock-Analysis"  
@@ -77,7 +77,6 @@ if "portfolio_data_store" not in st.session_state:
 
 master_df = st.session_state.portfolio_data_store
 
-# ব্যাকঅ্যান্ড স্ট্রাকচার সেফগার্ড ভ্যালিডেশন
 for required_col in ["Buy Price", "Quantity", "Buy Charges", "Sell Price", "Sell Charges", "Realized P&L", "Status"]:
     if required_col not in master_df.columns:
         master_df[required_col] = 0.0 if "Charges" in required_col or "Price" in required_col or "P&L" in required_col else ("ACTIVE" if required_col == "Status" else 0)
@@ -86,18 +85,21 @@ active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=T
 closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
 # =========================================================================
-# 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS HUD
+# 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS HUD (বাটন বাগ ফিক্সড)
 # =========================================================================
 st.markdown("### 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS")
 with st.expander("📂 OPEN LIVE SYSTEM HARDWARE TERMINAL CONSOLE", expanded=True):
     col_t1, col_t2 = st.columns([4, 1])
-    col_t1.write(f"**NSE Dynamic Array Streams:** `{len(SCREENER_WATCHLIST)} Assets Indexed` | **GitHub Bridge Status:** `{masked_token}`")
-    if col_t2.button("🧹 Clear Terminal Logs"):
+    col_t1.write(f"**NSE Dynamic Array Streams:** `{len(SCREENER_WATCHLIST)} Tickers Locked` | **GitHub Bridge Status:** `{masked_token}`")
+    
+    # 🎯 FIXED LOG CLEARING BUG: বাটন টিপলে সেশন পুরোপুরি ক্লিয়ার হবে এবং পেজ স্টেট ক্র্যাশ করবে না
+    if col_t2.button("🧹 Clear Terminal Logs", key="clear_logs_unique_btn"):
         st.session_state.live_logs = []
+        st.success("Terminal buffer flushed successfully!")
         st.rerun()
         
     logs_list = st.session_state.get("live_logs", [])
-    log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: Data nodes responsive. Premium analytics stream active..."
+    log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: Pipeline active. Buffer cleared. Awaiting hardware operations sync..."
     st.code(log_box_content, language="bash")
 
 st.markdown("---")
@@ -113,7 +115,8 @@ menu_selection = st.sidebar.radio(
         "📥 TRANSACTION EXECUTION UNIT",
         "📋 RUNNING POSITION REPLICA",
         "📡 SYSTEM HARDWARE SYNC"
-    ]
+    ],
+    key="navigation_sidebar_radio"
 )
 
 ALL_METRICS_COLS = [
@@ -152,7 +155,7 @@ def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promot
     except Exception as e: add_log(f"Screener execution fault: {str(e)}", "ERROR")
 
 # =========================================================================
-# ২. 📊 PORTFOLIO ANALYTICS (রিয়েল-টাইম ট্র্যাকার এবং গ্লোয়িং চার্ট ব্যাক)
+# MODULE 1: 📊 PORTFOLIO ANALYTICS
 # =========================================================================
 if menu_selection == "📊 PORTFOLIO ANALYTICS":
     st.markdown("### 📈 PREMIUM PORTFOLIO EXECUTIVE HUD OVERVIEW")
@@ -174,7 +177,6 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
             except Exception:
                 last_prices = {s: float(active_portfolio[active_portfolio["Stock"] == s]["Buy Price"].iloc[0]) for s in active_portfolio["Stock"].unique()}
 
-        # Core Math Matrix Computations
         active_portfolio["CMP (₹)"] = active_portfolio["Stock"].map(last_prices).fillna(active_portfolio["Buy Price"])
         active_portfolio["Total Invested"] = active_portfolio["Quantity"].astype(int) * active_portfolio["Buy Price"].astype(float)
         active_portfolio["Current Value"] = active_portfolio["Quantity"].astype(int) * active_portfolio["CMP (₹)"].astype(float)
@@ -185,7 +187,6 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
         net_unr = tot_cur - tot_inv
         roi_pct = (net_unr / tot_inv * 100) if tot_inv > 0 else 0.0
 
-        # High-End Metric Cards Layout
         c1, c2, c3, c4 = st.columns(4)
         c1.markdown(f'<div class="quant-card"><div style="font-size:11px;color:#00bfff;">CURRENT EQUITY VALUE</div><div class="quant-val">₹ {tot_cur:,.2f}</div></div>', unsafe_allow_html=True)
         c2.markdown(f'<div class="quant-card"><div style="font-size:11px;color:#a1a1aa;">CAPITAL INVESTED</div><div class="quant-val">₹ {tot_inv:,.2f}</div></div>', unsafe_allow_html=True)
@@ -194,7 +195,6 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
         c3.markdown(f'<div class="quant-card" style="border-top:3px solid {pnl_color};"><div style="font-size:11px;color:{pnl_color};">NET UNREALIZED VARIANCE</div><div class="quant-val" style="color:{pnl_color};">₹ {net_unr:,.2f}</div></div>', unsafe_allow_html=True)
         c4.markdown(f'<div class="quant-card" style="border-top:3px solid {pnl_color};"><div style="font-size:11px;color:{pnl_color};">TOTAL ROI (%)</div><div class="quant-val" style="color:{pnl_color};">{roi_pct:+.2f}%</div></div>', unsafe_allow_html=True)
 
-        # Plotly Master Grid Charts
         st.markdown("---")
         chart_col1, chart_col2 = st.columns(2)
         
@@ -237,14 +237,13 @@ elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
         execute_quant_filter_engine(min_sales, min_roe, 35.0, 1000.0, 45.0, 2.5)
 
 # =========================================================================
-# ৩. 📥 TRANSACTION EXECUTION UNIT (টাইপ-সার্চ সাজেস্টিভ ড্রপডাউন ১০০% ফিক্স)
+# MODULE 4: 📥 TRANSACTION EXECUTION UNIT (সাজেস্টিভ ড্রপডাউন সার্চ)
 # =========================================================================
 elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
     st.markdown("### 📥 EXECUTIVE ORDER TRANSITS DESK")
     trade_type = st.radio("Execution Vector:", ["🛒 ACCUMULATE (BUY)", "💰 LIQUIDATE (SELL)"], horizontal=True)
     
     with st.form("trade_form", clear_on_submit=True):
-        # 🎯 ডাইনামিক ২,০০০+ এনএসই লিস্ট ড্রপডাউনে লক করা হলো, যাতে টাইপ করলেই ফিল্টার সাজেস্ট করে
         dropdown_options = sorted(list(SCREENER_WATCHLIST)) if SCREENER_WATCHLIST else ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"]
         if "LIQUIDATE" in trade_type and not active_portfolio.empty:
             dropdown_options = sorted(list(active_portfolio["Stock"].unique()))
