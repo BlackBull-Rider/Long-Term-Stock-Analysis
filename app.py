@@ -290,4 +290,26 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                 else:
                     master_df = pd.concat([master_df, pd.DataFrame([{"Stock": stock_name, "Buy Price": round(input_price, 2), "Quantity": input_qty, "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"}])], ignore_index=True)
             else:
-                idx = master_df[(master_df["Status"] == "ACTIVE") & (master_df["Stock"] == stock_name)].index
+                idx = master_df[(master_df["Status"] == "ACTIVE") & (master_df["Stock"] == stock_name)].index[0]
+                old_qty = int(master_df.loc[idx, "Quantity"])
+                buy_p = float(master_df.loc[idx, "Buy Price"])
+                s_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=False)
+                allocated_b_charge = float(master_df.loc[idx, "Buy Charges"]) * (input_qty / old_qty)
+                realized_pnl = round(((input_price - buy_p) * input_qty) - (allocated_b_charge + s_charges), 2)
+                
+                if input_qty >= old_qty:
+                    master_df.loc[idx, ["Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"]] = [input_price, str(trade_date), s_charges, realized_pnl, "CLOSED"]
+                else:
+                    master_df.loc[idx, "Quantity"] = old_qty - input_qty
+                    master_df.loc[idx, "Buy Charges"] = float(master_df.loc[idx, "Buy Charges"]) - allocated_b_charge
+                    master_df = pd.concat([master_df, pd.DataFrame([{"Stock": stock_name, "Buy Price": buy_p, "Quantity": input_qty, "Buy Date": master_df.loc[idx, "Buy Date"], "Buy Charges": round(allocated_b_charge, 2), "Sell Price": input_price, "Sell Date": str(trade_date), "Sell Charges": s_charges, "Realized P&L": realized_pnl, "Status": "CLOSED"}])], ignore_index=True)
+            
+            save_permanent_database(master_df)
+            st.rerun()
+
+elif menu_selection == "📋 RUNNING POSITION REPLICA":
+    st.markdown("### 📋 ACTIVE RUNNING POSITION INVENTORY")
+    if not active_portfolio.empty: st.dataframe(active_portfolio[["Stock", "Quantity", "Buy Price", "Buy Charges", "Buy Date"]], use_container_width=True)
+
+render_operational_guidelines()
+render_terminal_footer()
