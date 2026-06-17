@@ -48,26 +48,32 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
     total_tickers = len(formatted_tickers)
     
     progress_bar = st.progress(0.0)
-    chunk_size = 30  # Optimized chunk size to prevent API throttling
+    chunk_size = 20  # Safe block size to ensure clean responses
     
     for i in range(0, total_tickers, chunk_size):
         chunk = formatted_tickers[i:i+chunk_size]
         progress_bar.progress(min(1.0, i / total_tickers))
         
         try:
-            # Multi-threading enabled for ultra-speed downloading
-            data = yf.download(tickers=chunk, period="2y", interval="1wk", group_by="ticker", threads=True, progress=False, timeout=15)
+            # Multi-threading enabled, dynamic multi-index grouping fixed via ticker extraction logic
+            data = yf.download(tickers=chunk, period="2y", interval="1wk", group_by="ticker", threads=True, progress=False, timeout=20)
             
+            if data.empty:
+                continue
+                
             for ticker in chunk:
                 try:
-                    # Resolve multi-index pandas dataframe output safely
+                    # 🎯 FIXED MULTI-INDEX BREAKDOWN BAG: Extracting single ticker dataframe safely
                     if len(chunk) > 1:
-                        if ticker not in data.columns.levels[0]: continue
-                        tick_data = data[ticker].dropna(subset=['Close'])
+                        if ticker in data.columns.get_level_values(0):
+                            tick_data = data[ticker].dropna(subset=['Close'])
+                        else:
+                            continue
                     else:
                         tick_data = data.dropna(subset=['Close'])
                         
-                    if tick_data.empty or len(tick_data) < 10: continue
+                    if tick_data.empty or len(tick_data) < 5: 
+                        continue
                     
                     closes = tick_data['Close']
                     highs = tick_data['High']
@@ -95,8 +101,10 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
                         "Marketing Efficiency (x)": round(np.random.uniform(0.3, 5.2), 1), "Inventory Speed (x)": round(np.random.uniform(2, 25), 1),
                         "EMA50": round(ema50, 2), "EMA200": round(ema200, 2)
                     })
-                except Exception: continue
-        except Exception: pass
+                except Exception: 
+                    continue
+        except Exception: 
+            pass
         
     progress_bar.empty()
 
@@ -110,12 +118,15 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
         sha = None
         try:
             res = requests.get(git_api_url, headers=headers, timeout=10)
-            if res.status_code == 200: sha = res.json()["sha"]
-        except Exception: pass
+            if res.status_code == 200: 
+                sha = res.json()["sha"]
+        except Exception: 
+            pass
         
         encoded_content = base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
         payload = {"message": f"📡 Hard-Write Market Dataset: Sync {len(compiled_rows)} Stocks", "content": encoded_content}
-        if sha: payload["sha"] = sha
+        if sha: 
+            payload["sha"] = sha
         
         try:
             response = requests.put(git_api_url, headers=headers, json=payload, timeout=30)
@@ -126,6 +137,8 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
                 add_log(f"GitHub Bulk Write Refused: {response.status_code}", "ERROR")
         except Exception as e:
             add_log(f"Network Pipeline Fail: {str(e)}", "ERROR")
+    else:
+        add_log("Pipeline Error: No stock rows successfully parsed during yFinance download stream.", "ERROR")
         
     return 0
 
@@ -138,5 +151,6 @@ def load_offline_market_data(github_user, github_repo, github_token):
             content = response.json()
             csv_bytes = base64.b64decode(content["content"])
             return pd.read_csv(io.BytesIO(csv_bytes))
-    except Exception: pass
+    except Exception: 
+        pass
     return pd.DataFrame()
