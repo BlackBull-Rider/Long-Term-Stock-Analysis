@@ -39,8 +39,10 @@ def calculate_indian_market_charges(price, qty, is_buy=True):
 
 def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_token):
     add_log(f"Initiating Heavy Download Pipeline for {len(ticker_list)} stocks...", "INFO")
-    if not github_token or github_token == "XXXX":
-        add_log("Sync Interrupted: GitHub Token signature is invalid!", "ERROR")
+    
+    clean_token = str(github_token).strip()
+    if not clean_token or clean_token == "XXXX" or len(clean_token) < 10:
+        add_log("Sync Interrupted: GitHub Token is Missing or Invalid!", "ERROR")
         return 0
 
     formatted_tickers = [f"{t}.NS" for t in ticker_list if not str(t).endswith(".NS")]
@@ -48,14 +50,13 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
     total_tickers = len(formatted_tickers)
     
     progress_bar = st.progress(0.0)
-    chunk_size = 20  # Safe block size to ensure clean responses
+    chunk_size = 20  
     
     for i in range(0, total_tickers, chunk_size):
         chunk = formatted_tickers[i:i+chunk_size]
         progress_bar.progress(min(1.0, i / total_tickers))
         
         try:
-            # Multi-threading enabled
             data = yf.download(tickers=chunk, period="2y", interval="1wk", group_by="ticker", threads=True, progress=False, timeout=20)
             
             if data.empty:
@@ -63,17 +64,14 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
                 
             for ticker in chunk:
                 try:
-                    # 🎯 FIXED MULTI-INDEX EXTRACTOR: Dynamically handles column level variations
                     if len(chunk) > 1:
                         if ('Close', ticker) in data.columns:
-                            # Level 0 is Price, Level 1 is Ticker
                             tick_data = pd.DataFrame({
                                 'Close': data[('Close', ticker)],
                                 'High': data[('High', ticker)],
                                 'Low': data[('Low', ticker)]
                             }).dropna(subset=['Close'])
                         elif ticker in data.columns.levels[0]:
-                            # Old structure fallback
                             tick_data = data[ticker].dropna(subset=['Close'])
                         else:
                             continue
@@ -121,7 +119,12 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
         csv_string = df_market.to_csv(index=False)
         
         git_api_url = f"https://api.github.com/repos/{github_user}/{github_repo}/contents/{DB_MARKET_FILE}"
-        headers = {"Authorization": f"token {github_token}", "Accept": "application/vnd.github.v3+json"}
+        
+        # 🎯 CORE GITHUB AUTH CORRECTIONS: Using proper 'Bearer' formatting for raw API commit authorization
+        headers = {
+            "Authorization": f"Bearer {clean_token}", 
+            "Accept": "application/vnd.github.v3+json"
+        }
         
         sha = None
         try:
@@ -142,17 +145,18 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
                 add_log(f"SUCCESS! market_data.csv sync completed with {len(compiled_rows)} assets!", "SUCCESS")
                 return len(compiled_rows)
             else:
-                add_log(f"GitHub Bulk Write Refused: {response.status_code}", "ERROR")
+                add_log(f"GitHub API Refused: {response.status_code}. Response: {response.text}", "ERROR")
         except Exception as e:
             add_log(f"Network Pipeline Fail: {str(e)}", "ERROR")
     else:
-        add_log("Pipeline Error: No stock rows successfully parsed during yFinance download stream.", "ERROR")
+        add_log("Pipeline Error: No stock rows successfully parsed during download stream.", "ERROR")
         
     return 0
 
 def load_offline_market_data(github_user, github_repo, github_token):
     git_api_url = f"https://api.github.com/repos/{github_user}/{github_repo}/contents/{DB_MARKET_FILE}"
-    headers = {"Authorization": f"token {github_token}"}
+    clean_token = str(github_token).strip()
+    headers = {"Authorization": f"Bearer {clean_token}"} # Fixed to Bearer
     try:
         response = requests.get(git_api_url, headers=headers, timeout=15)
         if response.status_code == 200:
