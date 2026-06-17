@@ -40,7 +40,6 @@ def detect_chart_patterns(closes, highs, lows):
     return "UPPER TRENDING"
 
 def run_offline_sync_pipeline(ticker_list):
-    """Chunking download execution handler preventing API throttle flags"""
     formatted_tickers = [f"{t}.NS" if not t.endswith(".NS") else t for t in ticker_list]
     compiled_rows = []
     
