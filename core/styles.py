@@ -92,7 +92,7 @@ def apply_terminal_theme():
             border: 1px solid #00ffcc !important;
         }
 
-        /* 📊 Institutional Data Grid Overlay */
+        /* 📊 Data Grid Overlay Configuration */
         div[data-testid="stDataFrame"] {
             border: 1px solid rgba(0, 255, 204, 0.15);
             background-color: rgba(10, 15, 26, 0.7);
