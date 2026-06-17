@@ -194,9 +194,15 @@ elif menu_selection == "📡 SYSTEM HARDWARE SYNC":
 elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
     st.markdown("### 📥 EXECUTIVE ORDER TRANSITS DESK")
     with st.form("trade_form", clear_on_submit=True):
-        stock_name = st.text_input("Enter NSE Stock Symbol verbatim").upper().strip()
+        # 🎯 SUGGESTION DROPDOWN FIX: SCREENER_WATCHLIST-কে ডাইরেক্ট লিস্ট হিসেবে ড্রপডাউনে লক করা হলো
+        stock_name = st.selectbox(
+            "Select Stock Symbol (Type to Search)", 
+            options=sorted(list(SCREENER_WATCHLIST)) if SCREENER_WATCHLIST else ["RELIANCE", "TCS", "INFY", "HDFCBANK"], 
+            index=None
+        )
         input_price = st.number_input("Execution Price (INR)", min_value=0.01)
         input_qty = st.number_input("Volume Quantity (Qty)", min_value=1)
+        
         if st.form_submit_button("ROUTE ORDER TO GITHUB DATA SYSTEM") and stock_name:
             master_df = load_permanent_database()
             b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
@@ -204,7 +210,9 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
             master_df = pd.concat([master_df, new_row], ignore_index=True)
             save_permanent_database(master_df)
             st.session_state.portfolio_data_store = master_df
+            st.success(f"🔥 Position lock routed successfully for {stock_name}!")
             st.rerun()
+
 
 render_operational_guidelines()
 render_terminal_footer()
