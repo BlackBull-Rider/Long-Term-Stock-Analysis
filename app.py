@@ -2,39 +2,87 @@
 import streamlit as st
 import pandas as pd
 import random
-import os
 import yfinance as yf
+import requests
+import base64
+import io
 from datetime import datetime
 import plotly.express as px
 
 from stocks import SCREENER_WATCHLIST
 from core.styles import apply_terminal_theme, render_branding_header, render_operational_guidelines, render_terminal_footer
-from core.engine import (
-    calculate_indian_market_charges, run_offline_sync_pipeline, 
-    load_offline_market_data, scan_ipo_fresh_listings
-)
+from core.engine import calculate_indian_market_charges, run_offline_sync_pipeline, load_offline_market_data, scan_ipo_fresh_listings
 
 # Launch HUD Frame Core
 apply_terminal_theme()
 render_branding_header()
 
+# =========================================================================
+# 🦅 100% AUTOMATIC HARD-WRITE GITHUB REPOSITORY DATABASE ENGINE
+# =========================================================================
+GITHUB_USER = "BlackBull-Rider"
+GITHUB_REPO = "Long-Term-Stock-Analysis"
+GITHUB_TOKEN = "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"
+
 DB_FILE = "portfolio_db.csv"
+API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{DB_FILE}"
 
 def load_permanent_database():
-    if os.path.exists(DB_FILE):
-        try: 
-            df = pd.read_csv(DB_FILE)
-            if "Current Value" in df.columns: df = df.drop(columns=["Current Value"])
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    try:
+        response = requests.get(API_URL, headers=headers, timeout=10)
+        if response.status_code == 200:
+            content = response.json()
+            # Base64 ডিকোড করে CSV ডাটা রিড করো
+            csv_bytes = base64.b64decode(content["content"])
+            df = pd.read_csv(io.BytesIO(csv_bytes))
+            df.columns = df.columns.str.strip()
             return df
-        except: pass
+    except:
+        pass
     return pd.DataFrame(columns=[
         "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
         "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"
     ])
 
 def save_permanent_database(df):
-    df.to_csv(DB_FILE, index=False)
+    """গুগল শিটের কোনো ঝামেলা ছাড়াই সরাসরি গিটহাব রেপোতে অটো-পুশ করার ইঞ্জিন"""
+    st.session_state.portfolio_data_store = df
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    # গিটহাবে ফাইল রাইট করার আগে কারেন্ট ফাইলের SHA বা ট্র্যাক আইডি নিতে হবে
+    sha = None
+    try:
+        res = requests.get(API_URL, headers=headers, timeout=10)
+        if res.status_code == 200:
+            sha = res.json()["sha"]
+    except:
+        pass
+        
+    csv_string = df.to_csv(index=False)
+    # ডাটাকে গিটহাব কমপ্লায়েন্স Base64 ফরম্যাটে এনকোড করো
+    encoded_content = base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
+    
+    payload = {
+        "message": f"🤖 Quant Terminal Auto-Sync // Ledger Modulated {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        "content": encoded_content
+    }
+    if sha:
+        payload["sha"] = sha
+        
+    try:
+        response = requests.put(API_URL, headers=headers, json=payload, timeout=15)
+        if response.status_code in [200, 201]:
+            st.toast("🎯 Portfolio Database Saved Automatically to GitHub!", icon="🦅")
+        else:
+            st.error("⚠️ GitHub API write restriction. Check Repository Name or Token scopes.")
+    except:
+        st.error("📡 Git network delay. Transaction cached in running local memory layout.")
 
+# ক্লাউড গিটহাব লাইভ ডেটাবেস সিঙ্ক
 if "portfolio_data_store" not in st.session_state:
     st.session_state.portfolio_data_store = load_permanent_database()
 
@@ -42,6 +90,7 @@ master_df = st.session_state.portfolio_data_store
 active_portfolio = master_df[master_df["Status"] == "ACTIVE"].reset_index(drop=True)
 closed_portfolio = master_df[master_df["Status"] == "CLOSED"].reset_index(drop=True)
 
+# Navigation Control Menu
 st.sidebar.markdown("### 🖥️ QUANT COMMANDS")
 menu_selection = st.sidebar.radio(
     "COMMAND CONTROLLER PANEL",
@@ -55,17 +104,6 @@ menu_selection = st.sidebar.radio(
         "📡 SYSTEM HARDWARE SYNC"
     ]
 )
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("🧠 Fund Manager Wisdom")
-quotes = [
-    "“FIIs and Promoters dictate the macro direction; retail volume just fills the gaps.”",
-    "“Fundamentals tell you WHAT to buy. Technicals tell you WHEN to buy.”",
-    "“Amateurs think about how much money they can make. Professionals think about how much they could lose.”",
-    "“Price follows earnings. If net profit margins expand, multi-year breakouts follow.”",
-    "“Bypassing direct exchange paths prevents network tracking. Cache computing is security.”"
-]
-st.sidebar.warning(random.choice(quotes))
 
 ALL_METRICS_COLS = [
     "Stock", "Chart Setup", "CMP (₹)", "P/E Ratio", "ROE (%)", 
@@ -110,8 +148,6 @@ def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promot
         df_final = pd.DataFrame(filtered_results)[ALL_METRICS_COLS]
         st.success(f"🎯 Query processed from offline repository in 0.2 seconds! Isolated: {len(df_final)} matching profiles.")
         st.dataframe(df_final, use_container_width=True)
-        csv_data = df_final.to_csv(index=False).encode('utf-8')
-        st.download_button(label="📥 EXPORT RESULTS SHEET (CSV)", data=csv_data, file_name=f"alpha_scan_output.csv", mime="text/csv")
     else:
         st.warning("No assets matched the exact custom structural formula parameters.")
 
@@ -188,7 +224,7 @@ elif menu_selection == "🔍 LIVE SCREENER CORE":
     min_mcap = col_f4.number_input("Minimum Market Cap (Cr)", value=1000.0)
 
     col_o1, col_o2 = st.columns(2)
-    min_promoter = col_o1.number_input("Minimum Promoter Block Ownership (%)", value=35.0)
+    min_promoter = col_o1.number_input("Minimum Promoter Ownership (%)", value=35.0)
     min_ema200_dist = col_o2.number_input("Minimum Cushion Space from 200 EMA (%)", value=float(calc_ema_dist))
     
     if st.button("EXECUTE LIVE SCREENER PARALLEL PROCESS"):
@@ -243,6 +279,7 @@ elif menu_selection == "🔮 FRESH IPO MONITOR":
 elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
     st.markdown("### 📥 EXECUTIVE ORDER TRANSITS DESK")
     trade_type = st.radio("Execution Vector:", ["🛒 ACCUMULATE (BUY)", "💰 LIQUIDATE (SELL)"], horizontal=True)
+    
     with st.form("trading_desk_form", clear_on_submit=True):
         stock_name = st.selectbox("Symbol Target", options=sorted(SCREENER_WATCHLIST) if "ACCUMULATE" in trade_type else (sorted(active_portfolio["Stock"].unique()) if not active_portfolio.empty else ["No Active Exposure"]), index=None)
         input_price = st.number_input("Price (INR)", min_value=0.01)
@@ -260,7 +297,6 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                     master_df.loc[idx, ["Buy Price", "Quantity", "Buy Charges", "Buy Date"]] = [round(((float(master_df.loc[idx, "Buy Price"]) * old_qty) + (input_price * input_qty)) / new_qty, 2), new_qty, float(master_df.loc[idx, "Buy Charges"]) + b_charges, str(trade_date)]
                 else:
                     master_df = pd.concat([master_df, pd.DataFrame([{"Stock": stock_name, "Buy Price": round(input_price, 2), "Quantity": input_qty, "Buy Date": str(trade_date), "Buy Charges": b_charges, "Sell Price": 0.0, "Sell Date": "-", "Sell Charges": 0.0, "Realized P&L": 0.0, "Status": "ACTIVE"}])], ignore_index=True)
-                st.success("Accumulation locked.")
             else:
                 idx = master_df[(master_df["Stock"] == stock_name) & (master_df["Status"] == "ACTIVE")].index[0]
                 old_qty = int(master_df.loc[idx, "Quantity"])
@@ -275,9 +311,9 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                     master_df.loc[idx, "Quantity"] = old_qty - input_qty
                     master_df.loc[idx, "Buy Charges"] = float(master_df.loc[idx, "Buy Charges"]) - allocated_b_charge
                     master_df = pd.concat([master_df, pd.DataFrame([{"Stock": stock_name, "Buy Price": buy_p, "Quantity": input_qty, "Buy Date": master_df.loc[idx, "Buy Date"], "Buy Charges": round(allocated_b_charge, 2), "Sell Price": input_price, "Sell Date": str(trade_date), "Sell Charges": s_charges, "Realized P&L": realized_pnl, "Status": "CLOSED"}])], ignore_index=True)
-                st.success("Liquidation synced.")
+            
+            # 🔥 গিটহাব এপিআই-এর মাধ্যমে সরাসরি রেপোজিটরিতে হার্ড-রাইট পুশ
             save_permanent_database(master_df)
-            st.session_state.portfolio_data_store = master_df
             st.rerun()
 
 elif menu_selection == "📋 RUNNING POSITION REPLICA":
