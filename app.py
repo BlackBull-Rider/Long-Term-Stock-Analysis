@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import random
+import os
 from datetime import datetime
 
 from stocks import SCREENER_WATCHLIST
@@ -12,12 +13,27 @@ from core.engine import calculate_indian_market_charges, run_massive_scan_engine
 apply_terminal_theme()
 render_branding_header()
 
-# Initialize Multi-Layer Storage Matrix
-if "portfolio_data_store" not in st.session_state:
-    st.session_state.portfolio_data_store = pd.DataFrame(columns=[
+# 💾 [PERMANENT FILE DATABASE CORES] - রিফ্রেশ করলেও ডেটা মুছবে না
+DB_FILE = "portfolio_db.csv"
+
+def load_permanent_database():
+    if os.path.exists(DB_FILE):
+        try:
+            return pd.read_csv(DB_FILE)
+        except:
+            pass
+    # ফাইল না থাকলে ব্ল্যাঙ্ক স্ট্রাকচার তৈরি হবে
+    return pd.DataFrame(columns=[
         "Stock", "Buy Price", "Quantity", "Buy Date", "Buy Charges", 
         "Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"
     ])
+
+def save_permanent_database(df):
+    df.to_csv(DB_FILE, index=False)
+
+# প্রথমে ফাইল থেকে পুরনো ডেটা লোড করো
+if "portfolio_data_store" not in st.session_state:
+    st.session_state.portfolio_data_store = load_permanent_database()
 
 # True Session-State Reactive Memory Matrix for Moat
 if "moat_sales" not in st.session_state: st.session_state.moat_sales = 15.0
@@ -248,10 +264,9 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
         
         if st.form_submit_button("ROUTE TRANSACTION TARGET TO SYSTEM"):
             if stock_name and stock_name != "No Active Exposure":
-                master_df = st.session_state.portfolio_data_store
+                master_df = load_permanent_database() # ডাইরেক্ট হার্ডডিস্ক ফাইল থেকে কারেন্ট ডাটা তোলো
                 
                 if "ACCUMULATE" in trade_type:
-                    # 🛒 Write Logic: Accumulate fresh shares or blend averages
                     b_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=True)
                     
                     if stock_name in master_df[master_df["Status"] == "ACTIVE"]["Stock"].values:
@@ -260,7 +275,6 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                         old_price = float(master_df.loc[idx, "Buy Price"])
                         old_charges = float(master_df.loc[idx, "Buy Charges"])
                         
-                        # Institutional Weighted Average Cost Formula
                         new_qty = old_qty + input_qty
                         new_avg_price = ((old_price * old_qty) + (input_price * input_qty)) / new_qty
                         
@@ -275,12 +289,12 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                         }])
                         master_df = pd.concat([master_df, new_row], ignore_index=True)
                         
+                    save_permanent_database(master_df) # 💾 সঙ্গে সঙ্গে ফাইলে পার্মানেন্ট সেভ করো
                     st.session_state.portfolio_data_store = master_df
-                    st.success(f"Position accumulated successfully into the database matrix! Total Tax: ₹{b_charges}")
+                    st.success(f"Position saved permanently to file database! Total Tax: ₹{b_charges}")
                     st.rerun()
                     
                 else:
-                    # 💰 Write Logic: Partial or full liquidation matrix processing
                     idx = master_df[(master_df["Stock"] == stock_name) & (master_df["Status"] == "ACTIVE")].index[0]
                     old_qty = int(master_df.loc[idx, "Quantity"])
                     buy_p = float(master_df.loc[idx, "Buy Price"])
@@ -289,17 +303,13 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                     
                     s_charges = calculate_indian_market_charges(input_price, input_qty, is_buy=False)
                     allocated_buy_charge = b_charges * (input_qty / old_qty)
-                    
-                    # Post-Tax Net Profit calculation
                     realized_pnl = ((input_price - buy_p) * input_qty) - (allocated_buy_charge + s_charges)
                     
                     if input_qty >= old_qty:
-                        # Full Exit
                         master_df.loc[idx, ["Sell Price", "Sell Date", "Sell Charges", "Realized P&L", "Status"]] = [
                             input_price, str(trade_date), s_charges, round(realized_pnl, 2), "CLOSED"
                         ]
                     else:
-                        # Partial Profit Booking Execution
                         master_df.loc[idx, "Quantity"] = old_qty - input_qty
                         master_df.loc[idx, "Buy Charges"] = b_charges - allocated_buy_charge
                         
@@ -310,16 +320,19 @@ elif menu_selection == "📥 TRANSACTION EXECUTION UNIT":
                         }])
                         master_df = pd.concat([master_df, partial_closed_row], ignore_index=True)
                         
+                    save_permanent_database(master_df) # 💾 সঙ্গে সঙ্গে ফাইলে পার্মানেন্ট সেভ করো
                     st.session_state.portfolio_data_store = master_df
-                    st.success(f"Position liquidated! Net Cash P&L booked: ₹{realized_pnl:,.2f}")
+                    st.success(f"Position updated & locked in database! Net Cash P&L booked: ₹{realized_pnl:,.2f}")
                     st.rerun()
 
 elif menu_selection == "📋 RUNNING POSITION REPLICA":
     st.subheader("📋 REPLICA ACCOUNTING SYSTEM PORTFOLIO")
+    active_portfolio = load_permanent_database()
+    active_portfolio = active_portfolio[active_portfolio["Status"] == "ACTIVE"].reset_index(drop=True)
+    
     if active_portfolio.empty:
         st.info("System layer vacant. Append positions using Transaction Desk.")
     else:
-        # Read Matrix
         st.dataframe(active_portfolio[["Stock", "Quantity", "Buy Price", "Buy Charges", "Buy Date"]], use_container_width=True)
         
         csv_active = active_portfolio.to_csv(index=False).encode('utf-8')
@@ -332,21 +345,22 @@ elif menu_selection == "📋 RUNNING POSITION REPLICA":
 
 elif menu_selection == "📊 RISK ASSESSMENT MODULE":
     st.subheader("📊 DEEP QUANT PORTFOLIO METRICS & CLOSED ARCHIVES")
+    db_data = load_permanent_database()
+    active_p = db_data[db_data["Status"] == "ACTIVE"]
+    closed_p = db_data[db_data["Status"] == "CLOSED"]
     
     col_m1, col_m2 = st.columns(2)
-    col_m1.metric("Total Active Assets Tracked", len(active_portfolio))
-    col_m2.metric("Total Closed Book Trades", len(closed_portfolio))
+    col_m1.metric("Total Active Assets Tracked", len(active_p))
+    col_m2.metric("Total Closed Book Trades", len(closed_p))
     
-    if closed_portfolio.empty:
+    if closed_p.empty:
         st.info("No closed historical records found inside session storage layers.")
     else:
         st.markdown("### CLOSED REVENUE TRANSACTION HISTORY")
-        # Read Closed Ledger History Matrix
-        st.dataframe(closed_portfolio[["Stock", "Quantity", "Buy Price", "Sell Price", "Realized P&L", "Sell Date"]], use_container_width=True)
+        st.dataframe(closed_p[["Stock", "Quantity", "Buy Price", "Sell Price", "Realized P&L", "Sell Date"]], use_container_width=True)
+        st.metric("Net Cumulative Closed Cash P&L", f"₹{closed_p['Realized P&L'].sum():,.2f}")
         
-        st.metric("Net Cumulative Closed Cash P&L", f"₹{closed_portfolio['Realized P&L'].sum():,.2f}")
-        
-        csv_closed = closed_portfolio.to_csv(index=False).encode('utf-8')
+        csv_closed = closed_p.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 DOWNLOAD CLOSED HISTORICAL LEDGER VAULT",
             data=csv_closed,
