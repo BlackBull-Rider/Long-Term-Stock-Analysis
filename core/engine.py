@@ -138,8 +138,12 @@ def load_offline_market_data(github_user, github_repo, github_token):
             content = response.json()
             csv_bytes = base64.b64decode(content["content"])
             return pd.read_csv(io.BytesIO(csv_bytes))
+        elif response.status_code == 404:
+            # 🎯 ম্যাজিক ট্রিক: ফাইল যদি গিটহাবে না থাকে, তবে ক্রাশ না করে একটি খালি ব্ল্যাঙ্ক ফ্রেম রিটার্ন করো
+            return pd.DataFrame()
     except: pass
     return pd.DataFrame()
+
 
 @st.cache_data(ttl=1800)
 def scan_ipo_fresh_listings(ticker_list):
