@@ -5,8 +5,12 @@ import numpy as np
 import requests
 import base64
 import json
+import io
 import os
 from datetime import datetime
+
+# 🎯 CRITICAL INDUSTRIAL FIX: Streamlit ইমপোর্ট করা হলো যাতে @st.cache_data ক্র্যাশ না করে
+import streamlit as st
 
 DB_MARKET_FILE = "core/market_data.csv"
 
@@ -101,7 +105,6 @@ def run_offline_sync_pipeline(ticker_list, github_user, github_repo, github_toke
         df_market = pd.DataFrame(compiled_rows)
         csv_string = df_market.to_csv(index=False)
         
-        # গিটহাব এপিআই-এর মাধ্যমে ফাইল পুশ করার মেকানিজম
         git_api_url = f"https://api.github.com/repos/{github_user}/{github_repo}/contents/{DB_MARKET_FILE}"
         headers = {
             "Authorization": f"token {github_token}",
@@ -139,11 +142,10 @@ def load_offline_market_data(github_user, github_repo, github_token):
             csv_bytes = base64.b64decode(content["content"])
             return pd.read_csv(io.BytesIO(csv_bytes))
         elif response.status_code == 404:
-            # 🎯 ম্যাজিক ট্রিক: ফাইল যদি গিটহাবে না থাকে, তবে ক্রাশ না করে একটি খালি ব্ল্যাঙ্ক ফ্রেম রিটার্ন করো
+            # 🎯 Egg-or-Chicken সমাধান: ফাইল প্রথমে খুঁজে না পেলে ক্র্যাশ না করে ব্ল্যাঙ্ক ফ্রেম দাও
             return pd.DataFrame()
     except: pass
     return pd.DataFrame()
-
 
 @st.cache_data(ttl=1800)
 def scan_ipo_fresh_listings(ticker_list):
