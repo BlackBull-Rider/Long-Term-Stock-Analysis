@@ -22,7 +22,7 @@ render_branding_header()
 # =========================================================================
 GITHUB_USER = "BlackBull-Rider"
 GITHUB_REPO = "Long-Term-Stock-Analysis"
-GITHUB_TOKEN = "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"
+GITHUB_TOKEN = st.secrets["MY_GITHUB_TOKEN"]
 
 DB_FILE = "portfolio_db.csv"
 API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{DB_FILE}"
