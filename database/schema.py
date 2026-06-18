@@ -1,5 +1,3 @@
-# database/schema.py
-
 from database.db import get_connection
 
 
@@ -82,6 +80,78 @@ def create_tables():
         low52 REAL,
 
         avg_volume REAL,
+
+        updated_at TEXT
+
+    )
+    """)
+
+    # ==========================
+    # FUNDAMENTAL DATA
+    # ==========================
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS fundamental_data(
+
+        symbol TEXT PRIMARY KEY,
+
+        market_cap REAL,
+
+        pe REAL,
+
+        pb REAL,
+
+        roe REAL,
+
+        roce REAL,
+
+        debt_equity REAL,
+
+        sales_growth REAL,
+
+        profit_growth REAL,
+
+        promoter_holding REAL,
+
+        institutional_holding REAL,
+
+        fii_holding REAL,
+
+        dii_holding REAL,
+
+        free_cash_flow REAL,
+
+        eps REAL,
+
+        book_value REAL,
+
+        dividend_yield REAL,
+
+        updated_at TEXT
+
+    )
+    """)
+
+    # ==========================
+    # IPO DATA
+    # ==========================
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS ipo_data(
+
+        symbol TEXT PRIMARY KEY,
+
+        company_name TEXT,
+
+        listing_date TEXT,
+
+        issue_price REAL,
+
+        listing_price REAL,
+
+        current_price REAL,
+
+        gain_percent REAL,
 
         updated_at TEXT
 
