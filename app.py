@@ -5,318 +5,204 @@ from data.load_universe import load_nse_universe
 from data.sync_engine import run_scan
 
 from core.screener import (
-breakout_candidates,
-strong_uptrend,
-near_52w_high
+    breakout_candidates,
+    strong_uptrend,
+    near_52w_high
 )
 
 from core.portfolio import (
-buy_stock,
-sell_stock,
-get_portfolio,
-get_transactions
+    buy_stock,
+    sell_stock,
+    get_portfolio,
+    get_transactions
 )
-
-=====================================
-
-INIT
-
-=====================================
 
 create_tables()
 
 st.set_page_config(
-page_title="Green Bull Rider V6",
-page_icon="🦅",
-layout="wide"
+    page_title="Green Bull Rider V6",
+    page_icon="🦅",
+    layout="wide"
 )
-
-=====================================
-
-HEADER
-
-=====================================
 
 st.title("🦅 Green Bull Rider V6")
 
-st.success(
-"Database Initialized Successfully"
-)
-
-=====================================
-
-SIDEBAR
-
-=====================================
-
 menu = st.sidebar.selectbox(
-"Navigation",
-[
-"Dashboard",
-"Universe Loader",
-"Market Scanner",
-"Portfolio",
-"Screener",
-"IPO Scanner"
-]
+    "Navigation",
+    [
+        "Dashboard",
+        "Universe Loader",
+        "Market Scanner",
+        "Portfolio",
+        "Screener",
+        "IPO Scanner"
+    ]
 )
-
-=====================================
-
-DASHBOARD
-
-=====================================
 
 if menu == "Dashboard":
 
-st.header("📊 Dashboard")
-
-st.info(
-    "System Ready"
-)
-
-=====================================
-
-UNIVERSE LOADER
-
-=====================================
+    st.header("📊 Dashboard")
+    st.success("System Ready")
 
 elif menu == "Universe Loader":
 
-st.header("📥 NSE Universe Loader")
+    st.header("📥 NSE Universe Loader")
 
-if st.button("🚀 Load NSE Universe"):
+    if st.button("🚀 Load NSE Universe"):
 
-    total = load_nse_universe()
+        total = load_nse_universe()
 
-    st.success(
-        f"{total} Stocks Loaded"
-    )
-
-=====================================
-
-MARKET SCANNER
-
-=====================================
+        st.success(
+            f"{total} Stocks Loaded"
+        )
 
 elif menu == "Market Scanner":
 
-st.header("📡 Market Scanner")
+    st.header("📡 Market Scanner")
 
-limit = st.slider(
-    "Stocks To Scan",
-    10,
-    500,
-    50
-)
+    limit = st.slider(
+        "Stocks To Scan",
+        10,
+        500,
+        50
+    )
 
-if st.button("🚀 Run Scan"):
-
-    with st.spinner(
-        "Scanning Stocks..."
-    ):
+    if st.button("🚀 Run Scan"):
 
         completed = run_scan(limit)
 
-    st.success(
-        f"{completed} Stocks Scanned Successfully"
-    )
-
-=====================================
-
-PORTFOLIO
-
-=====================================
+        st.success(
+            f"{completed} Stocks Scanned"
+        )
 
 elif menu == "Portfolio":
 
-st.header("💼 Portfolio")
+    st.header("💼 Portfolio")
 
-tab1, tab2, tab3 = st.tabs(
-    [
-        "Buy",
-        "Sell",
-        "Holdings"
-    ]
-)
-
-with tab1:
-
-    st.subheader(
-        "Buy Stock"
+    tab1, tab2, tab3 = st.tabs(
+        ["Buy", "Sell", "Holdings"]
     )
 
-    symbol = st.text_input(
-        "Symbol"
-    ).upper()
+    with tab1:
 
-    qty = st.number_input(
-        "Quantity",
-        min_value=1.0
-    )
+        symbol = st.text_input(
+            "Symbol"
+        ).upper()
 
-    price = st.number_input(
-        "Price",
-        min_value=0.0
-    )
-
-    if st.button(
-        "Buy Stock"
-    ):
-
-        buy_stock(
-            symbol,
-            qty,
-            price
+        qty = st.number_input(
+            "Quantity",
+            min_value=1.0
         )
 
-        st.success(
-            "Stock Added"
+        price = st.number_input(
+            "Price",
+            min_value=0.0
         )
 
-with tab2:
+        if st.button("Buy Stock"):
 
-    st.subheader(
-        "Sell Stock"
-    )
+            buy_stock(
+                symbol,
+                qty,
+                price
+            )
 
-    symbol = st.text_input(
-        "Sell Symbol"
-    ).upper()
+            st.success(
+                "Stock Added"
+            )
 
-    qty = st.number_input(
-        "Sell Quantity",
-        min_value=1.0
-    )
+    with tab2:
 
-    price = st.number_input(
-        "Sell Price",
-        min_value=0.0
-    )
+        symbol = st.text_input(
+            "Sell Symbol"
+        ).upper()
 
-    if st.button(
-        "Sell Stock"
-    ):
-
-        sell_stock(
-            symbol,
-            qty,
-            price
+        qty = st.number_input(
+            "Sell Quantity",
+            min_value=1.0
         )
 
-        st.success(
-            "Stock Sold"
+        price = st.number_input(
+            "Sell Price",
+            min_value=0.0
         )
 
-with tab3:
+        if st.button("Sell Stock"):
 
-    holdings = get_portfolio()
+            sell_stock(
+                symbol,
+                qty,
+                price
+            )
 
-    st.subheader(
-        "Current Holdings"
-    )
+            st.success(
+                "Stock Sold"
+            )
 
-    st.dataframe(
-        holdings,
-        use_container_width=True
-    )
+    with tab3:
 
-    st.subheader(
-        "Transaction History"
-    )
+        holdings = get_portfolio()
 
-    txns = get_transactions()
+        st.subheader(
+            "Holdings"
+        )
 
-    st.dataframe(
-        txns,
-        use_container_width=True
-    )
+        st.dataframe(
+            holdings,
+            use_container_width=True
+        )
 
-=====================================
+        txns = get_transactions()
 
-SCREENER
+        st.subheader(
+            "Transactions"
+        )
 
-=====================================
+        st.dataframe(
+            txns,
+            use_container_width=True
+        )
 
 elif menu == "Screener":
 
-st.header("🔍 Smart Screener")
+    st.header("🔍 Smart Screener")
 
-screen_type = st.selectbox(
-
-    "Select Screener",
-
-    [
-
-        "Breakout Candidates",
-
-        "Strong Uptrend",
-
-        "Near 52W High"
-
-    ]
-
-)
-
-if screen_type == "Breakout Candidates":
-
-    df = breakout_candidates()
-
-elif screen_type == "Strong Uptrend":
-
-    df = strong_uptrend()
-
-else:
-
-    df = near_52w_high()
-
-st.subheader(
-    f"Found {len(df)} Stocks"
-)
-
-if not df.empty:
-
-    columns = [
-
-        "symbol",
-        "cmp",
-        "rsi",
-        "ema20",
-        "ema50",
-        "ema200",
-        "Trend",
-        "Breakout",
-        "Valuation"
-
-    ]
-
-    available = [
-        c
-        for c in columns
-        if c in df.columns
-    ]
-
-    st.dataframe(
-        df[available],
-        use_container_width=True
+    screen_type = st.selectbox(
+        "Select Screener",
+        [
+            "Breakout Candidates",
+            "Strong Uptrend",
+            "Near 52W High"
+        ]
     )
 
-else:
+    if screen_type == "Breakout Candidates":
 
-    st.warning(
-        "No Stocks Found"
+        df = breakout_candidates()
+
+    elif screen_type == "Strong Uptrend":
+
+        df = strong_uptrend()
+
+    else:
+
+        df = near_52w_high()
+
+    st.write(
+        f"Found {len(df)} Stocks"
     )
 
-=====================================
+    if not df.empty:
 
-IPO SCANNER
-
-=====================================
+        st.dataframe(
+            df,
+            use_container_width=True
+        )
 
 elif menu == "IPO Scanner":
 
-st.header("🆕 IPO Discovery")
+    st.header("🆕 IPO Discovery")
 
-st.info(
-    "IPO Module Coming Soon"
-)
+    st.info(
+        "Coming Soon"
+    )
