@@ -67,7 +67,7 @@ elif menu == "Universe Loader":
     )
 
     st.write(
-        "Load all NSE EQ stocks into database"
+        "Load all NSE stocks into database"
     )
 
     if st.button(
@@ -113,7 +113,7 @@ elif menu == "Screener":
     )
 
 # =========================
-# IPO
+# IPO SCANNER
 # =========================
 
 elif menu == "IPO Scanner":
