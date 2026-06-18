@@ -14,8 +14,13 @@ from core.portfolio import (
     buy_stock,
     sell_stock,
     get_portfolio,
-    get_transactions
+    get_transactions,
+    get_stock_options
 )
+
+# ==========================
+# INIT
+# ==========================
 
 create_tables()
 
@@ -25,7 +30,15 @@ st.set_page_config(
     layout="wide"
 )
 
+# ==========================
+# HEADER
+# ==========================
+
 st.title("🦅 Green Bull Rider V6")
+
+# ==========================
+# SIDEBAR
+# ==========================
 
 menu = st.sidebar.selectbox(
     "Navigation",
@@ -39,10 +52,19 @@ menu = st.sidebar.selectbox(
     ]
 )
 
+# ==========================
+# DASHBOARD
+# ==========================
+
 if menu == "Dashboard":
 
     st.header("📊 Dashboard")
+
     st.success("System Ready")
+
+# ==========================
+# UNIVERSE LOADER
+# ==========================
 
 elif menu == "Universe Loader":
 
@@ -55,6 +77,10 @@ elif menu == "Universe Loader":
         st.success(
             f"{total} Stocks Loaded"
         )
+
+# ==========================
+# MARKET SCANNER
+# ==========================
 
 elif menu == "Market Scanner":
 
@@ -69,99 +95,161 @@ elif menu == "Market Scanner":
 
     if st.button("🚀 Run Scan"):
 
-        completed = run_scan(limit)
+        with st.spinner(
+            "Scanning Stocks..."
+        ):
+
+            completed = run_scan(limit)
 
         st.success(
-            f"{completed} Stocks Scanned"
+            f"{completed} Stocks Scanned Successfully"
         )
+
+# ==========================
+# PORTFOLIO
+# ==========================
 
 elif menu == "Portfolio":
 
     st.header("💼 Portfolio")
 
+    stock_options = get_stock_options()
+
     tab1, tab2, tab3 = st.tabs(
-        ["Buy", "Sell", "Holdings"]
+        [
+            "Buy",
+            "Sell",
+            "Holdings"
+        ]
     )
+
+    # ==========================
+    # BUY
+    # ==========================
 
     with tab1:
 
-        symbol = st.text_input(
-            "Symbol"
-        ).upper()
+        st.subheader("Buy Stock")
+
+        selected_stock = st.selectbox(
+            "Search Stock",
+            stock_options,
+            index=None,
+            placeholder="Type RELIANCE, TCS, INFY..."
+        )
 
         qty = st.number_input(
             "Quantity",
-            min_value=1.0
+            min_value=1.0,
+            value=1.0,
+            key="buy_qty"
         )
 
         price = st.number_input(
-            "Price",
-            min_value=0.0
+            "Buy Price",
+            min_value=0.0,
+            value=0.0,
+            key="buy_price"
         )
 
-        if st.button("Buy Stock"):
+        if st.button("✅ Buy"):
 
-            buy_stock(
-                symbol,
-                qty,
-                price
-            )
+            if selected_stock:
 
-            st.success(
-                "Stock Added"
-            )
+                symbol = (
+                    selected_stock
+                    .split(" - ")[0]
+                )
+
+                buy_stock(
+                    symbol,
+                    qty,
+                    price
+                )
+
+                st.success(
+                    f"{symbol} Added Successfully"
+                )
+
+    # ==========================
+    # SELL
+    # ==========================
 
     with tab2:
 
-        symbol = st.text_input(
-            "Sell Symbol"
-        ).upper()
+        st.subheader("Sell Stock")
+
+        selected_stock = st.selectbox(
+            "Select Stock To Sell",
+            stock_options,
+            index=None,
+            key="sell_symbol"
+        )
 
         qty = st.number_input(
             "Sell Quantity",
-            min_value=1.0
+            min_value=1.0,
+            value=1.0,
+            key="sell_qty"
         )
 
         price = st.number_input(
             "Sell Price",
-            min_value=0.0
+            min_value=0.0,
+            value=0.0,
+            key="sell_price"
         )
 
-        if st.button("Sell Stock"):
+        if st.button("❌ Sell"):
 
-            sell_stock(
-                symbol,
-                qty,
-                price
-            )
+            if selected_stock:
 
-            st.success(
-                "Stock Sold"
-            )
+                symbol = (
+                    selected_stock
+                    .split(" - ")[0]
+                )
+
+                sell_stock(
+                    symbol,
+                    qty,
+                    price
+                )
+
+                st.success(
+                    f"{symbol} Sold Successfully"
+                )
+
+    # ==========================
+    # HOLDINGS
+    # ==========================
 
     with tab3:
 
-        holdings = get_portfolio()
-
         st.subheader(
-            "Holdings"
+            "Current Holdings"
         )
+
+        holdings = get_portfolio()
 
         st.dataframe(
             holdings,
             use_container_width=True
         )
 
-        txns = get_transactions()
-
         st.subheader(
-            "Transactions"
+            "Transaction History"
         )
+
+        txns = get_transactions()
 
         st.dataframe(
             txns,
             use_container_width=True
         )
+
+# ==========================
+# SCREENER
+# ==========================
 
 elif menu == "Screener":
 
@@ -188,7 +276,7 @@ elif menu == "Screener":
 
         df = near_52w_high()
 
-    st.write(
+    st.subheader(
         f"Found {len(df)} Stocks"
     )
 
@@ -199,10 +287,20 @@ elif menu == "Screener":
             use_container_width=True
         )
 
+    else:
+
+        st.warning(
+            "No Stocks Found"
+        )
+
+# ==========================
+# IPO SCANNER
+# ==========================
+
 elif menu == "IPO Scanner":
 
     st.header("🆕 IPO Discovery")
 
     st.info(
-        "Coming Soon"
+        "IPO Module Coming Soon"
     )
