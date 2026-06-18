@@ -3,7 +3,11 @@ import streamlit as st
 from database.schema import create_tables
 from data.load_universe import load_nse_universe
 from data.sync_engine import run_scan
-
+from core.screener import (
+    breakout_candidates,
+    strong_uptrend,
+    near_52w_high
+)
 # ==========================
 # INIT
 # ==========================
