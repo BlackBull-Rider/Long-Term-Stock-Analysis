@@ -3,14 +3,16 @@ import streamlit as st
 from database.schema import create_tables
 from data.load_universe import load_nse_universe
 from data.sync_engine import run_scan
+
 from core.screener import (
     breakout_candidates,
     strong_uptrend,
     near_52w_high
 )
-# ==========================
+
+# =====================================
 # INIT
-# ==========================
+# =====================================
 
 create_tables()
 
@@ -20,9 +22,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==========================
+# =====================================
 # HEADER
-# ==========================
+# =====================================
 
 st.title("🦅 Green Bull Rider V6")
 
@@ -30,9 +32,9 @@ st.success(
     "Database Initialized Successfully"
 )
 
-# ==========================
+# =====================================
 # SIDEBAR
-# ==========================
+# =====================================
 
 menu = st.sidebar.selectbox(
     "Navigation",
@@ -46,9 +48,9 @@ menu = st.sidebar.selectbox(
     ]
 )
 
-# ==========================
+# =====================================
 # DASHBOARD
-# ==========================
+# =====================================
 
 if menu == "Dashboard":
 
@@ -58,18 +60,14 @@ if menu == "Dashboard":
         "System Ready"
     )
 
-# ==========================
+# =====================================
 # UNIVERSE LOADER
-# ==========================
+# =====================================
 
 elif menu == "Universe Loader":
 
     st.header(
         "📥 NSE Universe Loader"
-    )
-
-    st.write(
-        "Load NSE stocks into database"
     )
 
     if st.button(
@@ -82,18 +80,14 @@ elif menu == "Universe Loader":
             f"{total} Stocks Loaded"
         )
 
-# ==========================
+# =====================================
 # MARKET SCANNER
-# ==========================
+# =====================================
 
 elif menu == "Market Scanner":
 
     st.header(
         "📡 Market Scanner"
-    )
-
-    st.write(
-        "Download price data and calculate technical indicators"
     )
 
     limit = st.slider(
@@ -117,9 +111,9 @@ elif menu == "Market Scanner":
             f"{completed} Stocks Scanned Successfully"
         )
 
-# ==========================
+# =====================================
 # PORTFOLIO
-# ==========================
+# =====================================
 
 elif menu == "Portfolio":
 
@@ -128,12 +122,12 @@ elif menu == "Portfolio":
     )
 
     st.info(
-        "Coming Soon"
+        "Portfolio Module Coming Soon"
     )
 
-# ==========================
+# =====================================
 # SCREENER
-# ==========================
+# =====================================
 
 elif menu == "Screener":
 
@@ -169,18 +163,57 @@ elif menu == "Screener":
 
         df = near_52w_high()
 
-    st.write(
+    st.subheader(
         f"Found {len(df)} Stocks"
     )
 
-    st.dataframe(
-        df,
-        use_container_width=True
-    )
+    if not df.empty:
 
-# ==========================
+        columns = [
+
+            "symbol",
+
+            "cmp",
+
+            "rsi",
+
+            "ema20",
+
+            "ema50",
+
+            "ema200",
+
+            "Trend",
+
+            "Breakout",
+
+            "Valuation"
+
+        ]
+
+        available = [
+            c
+            for c in columns
+            if c in df.columns
+        ]
+
+        st.dataframe(
+
+            df[available],
+
+            use_container_width=True
+
+        )
+
+    else:
+
+        st.warning(
+            "No Stocks Found"
+        )
+
+# =====================================
 # IPO SCANNER
-# ==========================
+# =====================================
 
 elif menu == "IPO Scanner":
 
@@ -189,5 +222,5 @@ elif menu == "IPO Scanner":
     )
 
     st.info(
-        "Coming Soon"
+        "IPO Module Coming Soon"
     )
