@@ -2,16 +2,13 @@ import streamlit as st
 
 from database.schema import create_tables
 from data.load_universe import load_nse_universe
+from data.sync_engine import run_scan
 
-# =========================
-# DATABASE INIT
-# =========================
+# ==========================
+# INIT
+# ==========================
 
 create_tables()
-
-# =========================
-# PAGE CONFIG
-# =========================
 
 st.set_page_config(
     page_title="Green Bull Rider V6",
@@ -19,9 +16,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# =========================
+# ==========================
 # HEADER
-# =========================
+# ==========================
 
 st.title("🦅 Green Bull Rider V6")
 
@@ -29,24 +26,25 @@ st.success(
     "Database Initialized Successfully"
 )
 
-# =========================
+# ==========================
 # SIDEBAR
-# =========================
+# ==========================
 
 menu = st.sidebar.selectbox(
     "Navigation",
     [
         "Dashboard",
         "Universe Loader",
+        "Market Scanner",
         "Portfolio",
         "Screener",
         "IPO Scanner"
     ]
 )
 
-# =========================
+# ==========================
 # DASHBOARD
-# =========================
+# ==========================
 
 if menu == "Dashboard":
 
@@ -56,9 +54,9 @@ if menu == "Dashboard":
         "System Ready"
     )
 
-# =========================
+# ==========================
 # UNIVERSE LOADER
-# =========================
+# ==========================
 
 elif menu == "Universe Loader":
 
@@ -67,26 +65,57 @@ elif menu == "Universe Loader":
     )
 
     st.write(
-        "Load all NSE stocks into database"
+        "Load NSE stocks into database"
     )
 
     if st.button(
         "🚀 Load NSE Universe"
     ):
 
-        with st.spinner(
-            "Loading NSE Universe..."
-        ):
-
-            total = load_nse_universe()
+        total = load_nse_universe()
 
         st.success(
-            f"{total} Stocks Loaded Successfully"
+            f"{total} Stocks Loaded"
         )
 
-# =========================
+# ==========================
+# MARKET SCANNER
+# ==========================
+
+elif menu == "Market Scanner":
+
+    st.header(
+        "📡 Market Scanner"
+    )
+
+    st.write(
+        "Download price data and calculate technical indicators"
+    )
+
+    limit = st.slider(
+        "Stocks To Scan",
+        10,
+        500,
+        50
+    )
+
+    if st.button(
+        "🚀 Run Scan"
+    ):
+
+        with st.spinner(
+            "Scanning Stocks..."
+        ):
+
+            completed = run_scan(limit)
+
+        st.success(
+            f"{completed} Stocks Scanned Successfully"
+        )
+
+# ==========================
 # PORTFOLIO
-# =========================
+# ==========================
 
 elif menu == "Portfolio":
 
@@ -98,9 +127,9 @@ elif menu == "Portfolio":
         "Coming Soon"
     )
 
-# =========================
+# ==========================
 # SCREENER
-# =========================
+# ==========================
 
 elif menu == "Screener":
 
@@ -112,9 +141,9 @@ elif menu == "Screener":
         "Coming Soon"
     )
 
-# =========================
+# ==========================
 # IPO SCANNER
-# =========================
+# ==========================
 
 elif menu == "IPO Scanner":
 
