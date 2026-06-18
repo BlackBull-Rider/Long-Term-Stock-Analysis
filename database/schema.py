@@ -1,21 +1,64 @@
-cur.execute("""
-CREATE TABLE IF NOT EXISTS stock_master(
+# database/schema.py
 
-    symbol TEXT PRIMARY KEY,
+from database.db import get_connection
 
-    company_name TEXT,
 
-    exchange TEXT,
+def create_tables():
 
-    sector TEXT,
+    conn = get_connection()
 
-    industry TEXT,
+    cur = conn.cursor()
 
-    market_cap REAL,
+    # ==========================
+    # STOCK MASTER
+    # ==========================
 
-    listing_date TEXT,
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS stock_master(
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        symbol TEXT PRIMARY KEY,
 
-)
-""")
+        company_name TEXT,
+
+        exchange TEXT,
+
+        sector TEXT,
+
+        industry TEXT,
+
+        market_cap REAL,
+
+        listing_date TEXT,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+    )
+    """)
+
+    # ==========================
+    # MARKET DATA
+    # ==========================
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS market_data(
+
+        symbol TEXT PRIMARY KEY,
+
+        cmp REAL,
+
+        open REAL,
+
+        high REAL,
+
+        low REAL,
+
+        volume REAL,
+
+        updated_at TEXT
+
+    )
+    """)
+
+    conn.commit()
+
+    conn.close()
