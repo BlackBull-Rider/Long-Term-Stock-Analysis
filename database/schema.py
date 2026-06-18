@@ -6,7 +6,6 @@ from database.db import get_connection
 def create_tables():
 
     conn = get_connection()
-
     cur = conn.cursor()
 
     # ==========================
@@ -59,6 +58,35 @@ def create_tables():
     )
     """)
 
-    conn.commit()
+    # ==========================
+    # TECHNICAL DATA
+    # ==========================
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS technical_data(
+
+        symbol TEXT PRIMARY KEY,
+
+        cmp REAL,
+
+        ema20 REAL,
+
+        ema50 REAL,
+
+        ema200 REAL,
+
+        rsi REAL,
+
+        high52 REAL,
+
+        low52 REAL,
+
+        avg_volume REAL,
+
+        updated_at TEXT
+
+    )
+    """)
+
+    conn.commit()
     conn.close()
