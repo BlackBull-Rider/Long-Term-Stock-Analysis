@@ -21,6 +21,85 @@ def get_all_stocks():
 
     conn.close()
 
+    if df.empty:
+        return df
+
+    # ==========================
+    # TREND
+    # ==========================
+
+    def trend(row):
+
+        if (
+            row["cmp"] > row["ema20"]
+            and
+            row["ema20"] > row["ema50"]
+            and
+            row["ema50"] > row["ema200"]
+        ):
+            return "📈 Strong Uptrend"
+
+        if (
+            row["cmp"] > row["ema50"]
+            and
+            row["ema50"] > row["ema200"]
+        ):
+            return "🟢 Uptrend"
+
+        if row["cmp"] > row["ema200"]:
+            return "🟡 Recovery"
+
+        return "🔴 Weak"
+
+    # ==========================
+    # BREAKOUT
+    # ==========================
+
+    def breakout(row):
+
+        if row["cmp"] >= row["high52"]:
+            return "🚀 52W Breakout"
+
+        if row["cmp"] >= row["high52"] * 0.98:
+            return "⚡ Near Breakout"
+
+        return "⏸ Normal"
+
+    # ==========================
+    # VALUATION
+    # ==========================
+
+    def valuation(row):
+
+        midpoint = (
+            row["high52"]
+            +
+            row["low52"]
+        ) / 2
+
+        if row["cmp"] < midpoint * 0.8:
+            return "🟢 Discount"
+
+        if row["cmp"] > midpoint * 1.2:
+            return "🟠 Premium"
+
+        return "⚪ Fair"
+
+    df["Trend"] = df.apply(
+        trend,
+        axis=1
+    )
+
+    df["Breakout"] = df.apply(
+        breakout,
+        axis=1
+    )
+
+    df["Valuation"] = df.apply(
+        valuation,
+        axis=1
+    )
+
     return df
 
 
@@ -68,7 +147,10 @@ def strong_uptrend():
 
     ]
 
-    return filtered
+    return filtered.sort_values(
+        by="rsi",
+        ascending=False
+    )
 
 
 def near_52w_high():
@@ -88,4 +170,7 @@ def near_52w_high():
 
     ]
 
-    return filtered
+    return filtered.sort_values(
+        by="rsi",
+        ascending=False
+    )
