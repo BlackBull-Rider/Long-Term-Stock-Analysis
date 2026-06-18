@@ -1,6 +1,7 @@
 import streamlit as st
 
 from database.schema import create_tables
+
 from data.load_universe import load_nse_universe
 from data.sync_engine import run_scan
 
@@ -20,6 +21,14 @@ from core.portfolio import (
 
 from core.portfolio_summary import (
     portfolio_summary
+)
+
+from core.recommendation_data import (
+    load_recommendation_data
+)
+
+from core.recommendation_engine import (
+    generate_recommendations
 )
 
 # ==========================
@@ -48,6 +57,7 @@ menu = st.sidebar.selectbox(
         "Market Scanner",
         "Portfolio",
         "Screener",
+        "AI Recommendation",
         "IPO Scanner"
     ]
 )
@@ -60,7 +70,9 @@ if menu == "Dashboard":
 
     st.header("📊 Dashboard")
 
-    st.success("System Ready")
+    st.success(
+        "System Ready"
+    )
 
 # ==========================
 # UNIVERSE LOADER
@@ -68,9 +80,13 @@ if menu == "Dashboard":
 
 elif menu == "Universe Loader":
 
-    st.header("📥 NSE Universe Loader")
+    st.header(
+        "📥 NSE Universe Loader"
+    )
 
-    if st.button("🚀 Load NSE Universe"):
+    if st.button(
+        "🚀 Load NSE Universe"
+    ):
 
         total = load_nse_universe()
 
@@ -84,7 +100,9 @@ elif menu == "Universe Loader":
 
 elif menu == "Market Scanner":
 
-    st.header("📡 Market Scanner")
+    st.header(
+        "📡 Market Scanner"
+    )
 
     limit = st.slider(
         "Stocks To Scan",
@@ -93,9 +111,13 @@ elif menu == "Market Scanner":
         50
     )
 
-    if st.button("🚀 Run Scan"):
+    if st.button(
+        "🚀 Run Scan"
+    ):
 
-        completed = run_scan(limit)
+        completed = run_scan(
+            limit
+        )
 
         st.success(
             f"{completed} Stocks Scanned"
@@ -149,15 +171,13 @@ elif menu == "Portfolio":
         ]
     )
 
-    # BUY
-
     with tab1:
 
         selected_stock = st.selectbox(
             "Search Stock",
             stock_options,
             index=None,
-            placeholder="Type RELIANCE, TCS..."
+            placeholder="Type RELIANCE..."
         )
 
         qty = st.number_input(
@@ -172,7 +192,9 @@ elif menu == "Portfolio":
             value=0.0
         )
 
-        if st.button("Buy Stock"):
+        if st.button(
+            "Buy Stock"
+        ):
 
             if selected_stock:
 
@@ -188,8 +210,6 @@ elif menu == "Portfolio":
                 )
 
                 st.rerun()
-
-    # SELL
 
     with tab2:
 
@@ -214,7 +234,9 @@ elif menu == "Portfolio":
             key="sell_price"
         )
 
-        if st.button("Sell Stock"):
+        if st.button(
+            "Sell Stock"
+        ):
 
             if selected_stock:
 
@@ -231,8 +253,6 @@ elif menu == "Portfolio":
 
                 st.rerun()
 
-    # HOLDINGS
-
     with tab3:
 
         st.subheader(
@@ -248,10 +268,8 @@ elif menu == "Portfolio":
             "Transactions"
         )
 
-        txns = get_transactions()
-
         st.dataframe(
-            txns,
+            get_transactions(),
             use_container_width=True
         )
 
@@ -261,7 +279,9 @@ elif menu == "Portfolio":
 
 elif menu == "Screener":
 
-    st.header("🔍 Smart Screener")
+    st.header(
+        "🔍 Smart Screener"
+    )
 
     screen_type = st.selectbox(
         "Select Screener",
@@ -294,13 +314,104 @@ elif menu == "Screener":
     )
 
 # ==========================
+# AI RECOMMENDATION
+# ==========================
+
+elif menu == "AI Recommendation":
+
+    st.header(
+        "🤖 AI Recommendation Engine"
+    )
+
+    years = st.slider(
+        "Investment Horizon (Years)",
+        1,
+        50,
+        15
+    )
+
+    expected_return = st.slider(
+        "Expected Return (%)",
+        10,
+        200,
+        25
+    )
+
+    if st.button(
+        "Generate Recommendations"
+    ):
+
+        with st.spinner(
+            "Analyzing Database..."
+        ):
+
+            df = load_recommendation_data()
+
+            result = generate_recommendations(
+                df,
+                years,
+                expected_return
+            )
+
+        st.success(
+            f"{len(result)} Stocks Found"
+        )
+
+        if not result.empty:
+
+            show_cols = [
+
+                "symbol",
+
+                "Master Score",
+
+                "Recommendation",
+
+                "Compounder Score",
+
+                "roe",
+
+                "roce",
+
+                "sales_growth",
+
+                "profit_growth",
+
+                "debt_equity"
+
+            ]
+
+            available = [
+
+                c
+
+                for c in show_cols
+
+                if c in result.columns
+
+            ]
+
+            st.dataframe(
+                result[available],
+                use_container_width=True
+            )
+
+        else:
+
+            st.warning(
+                "No Matching Stocks Found"
+            )
+
+# ==========================
 # IPO
 # ==========================
 
 elif menu == "IPO Scanner":
 
-    st.header("🆕 IPO Discovery")
+    st.header(
+        "🆕 IPO Discovery"
+    )
 
     st.info(
-        "Coming Soon"
+        "IPO Engine Coming Soon"
     )
