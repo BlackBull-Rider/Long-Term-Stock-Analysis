@@ -8,23 +8,18 @@ def get_stock_options():
 
     conn = get_connection()
 
-    query = """
-    SELECT
-        symbol,
-        company_name
-    FROM stock_master
-    ORDER BY symbol
-    """
-
     df = pd.read_sql_query(
-        query,
+        """
+        SELECT
+            symbol,
+            company_name
+        FROM stock_master
+        ORDER BY symbol
+        """,
         conn
     )
 
     conn.close()
-
-    if df.empty:
-        return []
 
     return [
         f"{row['symbol']} - {row['company_name']}"
@@ -32,19 +27,14 @@ def get_stock_options():
     ]
 
 
-def buy_stock(
-    symbol,
-    qty,
-    price,
-    charges=0
-):
+def buy_stock(symbol, qty, price, charges=0):
 
     conn = get_connection()
     cur = conn.cursor()
 
     invested = (qty * price) + charges
 
-    existing = cur.execute(
+    row = cur.execute(
         """
         SELECT *
         FROM portfolio
@@ -53,10 +43,10 @@ def buy_stock(
         (symbol,)
     ).fetchone()
 
-    if existing:
+    if row:
 
-        old_qty = float(existing["qty"])
-        old_avg = float(existing["avg_price"])
+        old_qty = float(row["qty"])
+        old_avg = float(row["avg_price"])
 
         new_qty = old_qty + qty
 
@@ -140,12 +130,7 @@ def buy_stock(
     conn.close()
 
 
-def sell_stock(
-    symbol,
-    qty,
-    price,
-    charges=0
-):
+def sell_stock(symbol, qty, price, charges=0):
 
     conn = get_connection()
     cur = conn.cursor()
@@ -202,13 +187,48 @@ def get_portfolio():
 
     df = pd.read_sql_query(
         """
-        SELECT *
-        FROM portfolio
+        SELECT
+            p.symbol,
+            p.qty,
+            p.avg_price,
+            t.cmp
+        FROM portfolio p
+        LEFT JOIN technical_data t
+        ON p.symbol = t.symbol
         """,
         conn
     )
 
     conn.close()
+
+    if df.empty:
+        return df
+
+    df["Invested"] = (
+        df["qty"]
+        *
+        df["avg_price"]
+    )
+
+    df["Current Value"] = (
+        df["qty"]
+        *
+        df["cmp"]
+    )
+
+    df["PnL"] = (
+        df["Current Value"]
+        -
+        df["Invested"]
+    )
+
+    df["PnL %"] = (
+        (
+            df["PnL"]
+            /
+            df["Invested"]
+        ) * 100
+    ).round(2)
 
     return df
 
