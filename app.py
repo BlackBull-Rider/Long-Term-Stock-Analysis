@@ -8,7 +8,6 @@ from datetime import datetime
 import yfinance as yf
 import plotly.express as px
 
-# 🎯 ১. সেশন স্টেট মেমোরি সবার আগে ব্যাকবোন হিসেবে লক করা হলো
 if "live_logs" not in st.session_state:
     st.session_state.live_logs = []
 
@@ -16,13 +15,9 @@ from stocks import SCREENER_WATCHLIST
 from core.styles import apply_terminal_theme, render_branding_header, render_operational_guidelines, render_terminal_footer
 from core.engine import calculate_indian_market_charges, run_offline_sync_pipeline, add_log
 
-# Premium UI Dark HUD Rules Apply
 apply_terminal_theme()
 render_branding_header()
 
-# =========================================================================
-# GITHUB ARCHITECTURE CONFIGURATION
-# =========================================================================
 GITHUB_USER = "BlackBull-Rider"  
 GITHUB_REPO = "Long-Term-Stock-Analysis"  
 
@@ -37,8 +32,8 @@ else:
 DB_FILE = "portfolio_db.csv"
 API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{DB_FILE}"
 
-# 🎯 ২. মেমোরি ক্যাশ ইঞ্জিন: বারবার ডাউনলোড আটকানোর সাথে টাইপ এলাইনমেন্ট সেফগার্ড
-@st.cache_data(ttl=600, show_spinner=False)
+# 🎯 র‍্যাম ক্যাশ মেকানিজম (ইনপুট টাইপিং গ্লিচ পুরোপুরি বন্ধ করার জন্য)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_cached_market_data(user, repo, token):
     git_api_url = f"https://api.github.com/repos/{user}/{repo}/contents/market_data.csv"
     headers = {"Authorization": f"token {str(token).strip()}"}
@@ -48,8 +43,7 @@ def load_cached_market_data(user, repo, token):
             content = response.json()
             csv_bytes = base64.b64decode(content["content"])
             return pd.read_csv(io.BytesIO(csv_bytes))
-    except Exception:
-        pass
+    except Exception: pass
     return pd.DataFrame()
 
 def load_permanent_database():
@@ -77,7 +71,7 @@ def save_permanent_database(df):
     
     csv_string = df.to_csv(index=False)
     payload = {
-        "message": f"🤖 Portfolio Core Auto Sync {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        "message": f"🤖 Portfolio Core System Auto Sync {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         "content": base64.b64encode(csv_string.encode("utf-8")).decode("utf-8")
     }
     if sha: payload["sha"] = sha
@@ -99,7 +93,7 @@ def clear_logs_callback():
     st.session_state.live_logs = []
 
 # =========================================================================
-# 🖥️ TERMINAL LOGGER DIAGNOSTICS
+# 🖥️ CORE BACKEND TERMINAL LOGS HUD
 # =========================================================================
 st.markdown("### 🖥️ CORE BACKEND LIVE DIAGNOSTIC LOGS")
 with st.expander("📂 OPEN LIVE SYSTEM HARDWARE TERMINAL CONSOLE", expanded=True):
@@ -108,12 +102,12 @@ with st.expander("📂 OPEN LIVE SYSTEM HARDWARE TERMINAL CONSOLE", expanded=Tru
     col_t2.button("🧹 Clear Terminal Logs", on_click=clear_logs_callback, key="ultimate_clear_logs_btn")
         
     logs_list = st.session_state.get("live_logs", [])
-    log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: RAM cache layers synchronized. Active state ready..."
+    log_box_content = "\n".join(logs_list) if logs_list else "SYSTEM: Data nodes responsive. Premium analytics stream active..."
     st.code(log_box_content, language="bash")
 
 st.markdown("---")
 
-# Navigation Sidebar Panel
+# Navigation Controller
 st.sidebar.markdown("### 🖥️ DATA ARCHITECTURE CONTROL")
 menu_selection = st.sidebar.radio(
     "COMMAND CONTROLLER PANEL",
@@ -128,20 +122,20 @@ ALL_METRICS_COLS = [
     "Max DD (%)", "EMA200 Dist (%)", "Dividend (%)", "Beta"
 ]
 
-# 🎯 ৩. পিওর কোয়ান্ট প্রাইস ভেলোসিটি ফিল্টার কোর ইঞ্জিন (১০০% আইসোলেটেড ও ক্যাশ-লকড)
+# 🎯 ১৪টি কোর প্যারামিটার প্রাইস ভেলোসিটি ফিল্টার ইঞ্জিন (১০০% বাগ-ফ্রি বড় লজিক)
 def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200, additional_moat_filter=False, gross_m=0.0, inv_spd=0.0, inst_val=0.0, dd_limit=-100.0, target_duration="1Y", target_return=0.0):
     raw_df = load_cached_market_data(GITHUB_USER, GITHUB_REPO, GITHUB_TOKEN)
-    
     if raw_df.empty:
-        st.error("⚠️ Database is blank on GitHub repository root. Navigate to 'SYSTEM HARDWARE SYNC' and trigger replication first.")
+        st.error("⚠️ Local data cache is blank. Please go to 'SYSTEM HARDWARE SYNC' and click sync button first.")
         return
         
     try:
         filtered_rows = []
+        dur_col = f"Return {target_duration} (%)"
+        
         for idx, row in raw_df.iterrows():
             try:
-                # কত সময়ে কত রিটার্ন ভেলোসিটি ফিল্টারিং রুলস
-                dur_col = f"Return {target_duration} (%)"
+                # ১. ড্রপডাউন থেকে সিলেক্ট করা বছরের রিটার্ন চেক
                 actual_ret = pd.to_numeric(row.get(dur_col, 0.0), errors='coerce')
                 if pd.isna(actual_ret) or actual_ret < float(target_return): continue
                 
@@ -181,12 +175,17 @@ def execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promot
                 
         if filtered_rows:
             q_df = pd.DataFrame(filtered_rows)
-            st.success(f"🎯 Strategy Filter Triggered. Isolated {len(q_df)} High-Velocity Profiles.")
-            st.dataframe(q_df[ALL_METRICS_COLS].reset_index(drop=True), use_container_width=True)
+            st.success(f"🎯 Strategy Filter Complete. Isolated {len(q_df)} High-Velocity Profiles.")
+            
+            # ড্রপডাউন থেকে সিলেক্ট করা বছরের রিটার্ন কলামটি আউটপুট টেবিলে ডাইনামিকালি যোগ করা হলো
+            render_cols = list(ALL_METRICS_COLS)
+            if dur_col not in render_cols:
+                render_cols.append(dur_col)
+                
+            st.dataframe(q_df[render_cols].reset_index(drop=True), use_container_width=True)
         else:
             st.warning("No listed equities match the active parameters.")
-    except Exception as e: 
-        st.error(f"Screener Structural Fault: {str(e)}")
+    except Exception as e: st.error(f"Screener Structural Fault: {str(e)}")
 
 # =========================================================================
 # SYSTEM LAYOUT MODULES
@@ -237,53 +236,57 @@ if menu_selection == "📊 PORTFOLIO ANALYTICS":
         st.markdown("---")
         st.dataframe(active_portfolio[["Stock", "Quantity", "Buy Price", "CMP (₹)", "Total Invested", "Current Value", "Unrealized P&L"]], use_container_width=True)
 
-# 🎯 ৪. LIVE SCREENER CORE (১০০% গ্লিচ-ফ্রি ইনপুট স্টেট লকড)
+# 🔍 LIVE SCREENER CORE (১ বছর থেকে ৫০ বছরের বিত্তম ফিক্স)
 elif menu_selection == "🔍 LIVE SCREENER CORE":
-    st.subheader("🦅 CORE BATCH QUANT MATRIX (১৪টি প্যারামিটার সচল)")
+    st.subheader("🦅 CORE BATCH QUANT MATRIX (১Y - ৫০Y প্যারামিটার সচল)")
+    
+    # 🎯 ১ থেকে ৫০ বছরের ডাইনামিক ড্রপডাউন বিত্তম
+    year_options = [f"{i}Y" for i in range(1, 51)]
     
     v1, v2 = st.columns(2)
-    target_dur = v1.selectbox("Target Velocity Duration Period", options=["3M", "6M", "1Y", "5Y"], index=2, key="core_scr_dur_v3")
-    min_return = v2.number_input("Minimum Expected Yield Target Return (%)", value=20.0, key="core_scr_ret_v3")
+    target_dur = v1.selectbox("Target Velocity Duration Period", options=year_options, index=0, key="core_scr_dur_final")
+    min_return = v2.number_input("Minimum Expected Yield Target Return (%)", value=20.0, key="core_scr_ret_final")
     
     st.markdown("---")
     c1, c2 = st.columns(2)
-    min_sales = c1.number_input("Minimum Revenue Growth (%)", value=15.0, key="core_sales_in")
-    min_roe = c2.number_input("Minimum Return On Equity (%)", value=15.0, key="core_roe_in")
+    min_sales = c1.number_input("Minimum Revenue Growth (%)", value=15.0, key="cs_sales")
+    min_roe = c2.number_input("Minimum Return On Equity (%)", value=15.0, key="cs_roe")
     c3, c4 = st.columns(2)
-    max_pe = c3.number_input("Maximum P/E Ratio Limit (0 for No Limit)", value=40.0, key="core_pe_in")
-    min_mcap = c4.number_input("Minimum Market Cap (Cr)", value=1000.0, key="core_mcap_in")
+    max_pe = c3.number_input("Maximum P/E Ratio Limit (0 for No Limit)", value=40.0, key="cs_pe")
+    min_mcap = c4.number_input("Minimum Market Cap (Cr)", value=1000.0, key="cs_mcap")
     c5, c6 = st.columns(2)
-    min_promoter = c5.number_input("Minimum Promoter Ownership (%)", value=40.0, key="core_prom_in")
-    min_ema200_dist = c6.number_input("Minimum Cushion Space from 200 EMA (%)", value=1.0, key="core_emad_in")
+    min_promoter = c5.number_input("Minimum Promoter Ownership (%)", value=40.0, key="cs_prom")
+    min_ema200_dist = c6.number_input("Minimum Cushion Space from 200 EMA (%)", value=1.0, key="cs_emad")
     
-    # 🎯 FIX HERE: পুরো কুয়েরি এক্সিকিউশন বাটন ক্লিকের ভেতর সেফগার্ড করা হলো (টাইপিং গ্লিচ উধাও)
+    # টাইপিং গ্লিচ লকড বাটন সাবমিশন
     if st.button("EXECUTE SCALPER BATCH DATA CORE SCAN", key="core_scan_trigger_btn"):
         execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, min_promoter, min_ema200_dist, target_duration=target_dur, target_return=min_return)
 
-# 🎯 ৫. MONSTER MOAT HUNT (১০০% গ্লিচ-ফ্রি ইনপুট স্টেট লকড)
+# 🚀 MONSTER MOAT HUNT (১ বছর থেকে ৫০ বছরের বিত্তম ফিক্স)
 elif menu_selection == "🚀 MONSTER MOAT HUNT (1000%)":
-    st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT RADAR (১৪টি প্যারামিটার সচল)")
+    st.subheader("🔥 HYPER-MONOPOLY MONSTER MOAT RADAR (১Y - ৫০Y প্যারামিটার সচল)")
+    
+    year_options = [f"{i}Y" for i in range(1, 51)]
     
     v1, v2 = st.columns(2)
-    target_dur = v1.selectbox("Moat Velocity Window Selection", options=["3M", "6M", "1Y", "5Y"], index=3, key="moat_scr_dur_v3")
-    min_return = v2.number_input("Multibagger Momentum Threshold Return (%)", value=100.0, key="moat_scr_ret_v3")
+    target_dur = v1.selectbox("Moat Velocity Window Selection", options=year_options, index=4, key="moat_scr_dur_final") # Default 5Y
+    min_return = v2.number_input("Multibagger Momentum Threshold Return (%)", value=100.0, key="moat_scr_ret_final")
     
     st.markdown("---")
     c1, c2 = st.columns(2)
-    min_sales = c1.number_input("Super-Normal Revenue Threshold Growth (%)", value=25.0, key="moat_sales_in")
-    min_roe = c2.number_input("High-Alpha Operating Target ROE (%)", value=25.0, key="moat_roe_in")
+    min_sales = c1.number_input("Super-Normal Revenue Threshold Growth (%)", value=25.0, key="mm_sales")
+    min_roe = c2.number_input("High-Alpha Operating Target ROE (%)", value=25.0, key="mm_roe")
     c3, c4 = st.columns(2)
-    min_gross_margin = c3.number_input("Pricing Premium Power (Minimum Gross Margin %)", value=45.0, key="moat_gross_in")
-    min_inventory_speed = c4.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", value=6.0, key="moat_inv_in")
+    min_gross_margin = c3.number_input("Pricing Premium Power (Minimum Gross Margin %)", value=45.0, key="mm_gross")
+    min_inventory_speed = c4.number_input("Consumer Velocity Force (Minimum Inventory Speed x)", value=6.0, key="mm_inv")
     c5, c6 = st.columns(2)
-    min_inst = c5.number_input("Minimum Institutional Allocation Layer (%)", value=15.0, key="moat_inst_in")
-    max_dd_limit = c6.number_input("Maximum Operational Drawdown Boundary (%)", value=-45.0, key="moat_dd_in")
+    min_inst = c5.number_input("Minimum Institutional Allocation Layer (%)", value=15.0, key="mm_inst")
+    max_dd_limit = c6.number_input("Maximum Operational Drawdown Boundary (%)", value=-45.0, key="mm_dd")
     
     col_x1, col_x2 = st.columns(2)
-    max_pe = col_x1.number_input("Maximum Multiples Cap", value=35.0, key="moat_pe_in")
-    min_mcap = col_x2.number_input("Minimum Threshold Market Cap (Cr)", value=1000.0, key="moat_mcap_in")
+    max_pe = col_x1.number_input("Maximum Multiples Cap", value=35.0, key="mm_pe")
+    min_mcap = col_x2.number_input("Minimum Threshold Market Cap (Cr)", value=1000.0, key="mm_mcap")
     
-    # 🎯 FIX HERE: পুরো কুয়েরি এক্সিকিউশন বাটন ক্লিকের ভেতর সেফগার্ড করা হলো (টাইপিং গ্লিচ উধাও)
     if st.button("LAUNCH MONSTER SCAN OVER 5000+ SECURITIES", key="moat_scan_trigger_btn"):
         execute_quant_filter_engine(min_sales, min_roe, max_pe, min_mcap, 45.0, 2.5, additional_moat_filter=True, gross_m=min_gross_margin, inv_spd=min_inventory_speed, inst_val=min_inst, dd_limit=max_dd_limit, target_duration=target_dur, target_return=min_return)
 
