@@ -88,5 +88,71 @@ def create_tables():
     )
     """)
 
+    # ==========================
+    # PORTFOLIO
+    # ==========================
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS portfolio(
+
+        symbol TEXT PRIMARY KEY,
+
+        qty REAL,
+
+        avg_price REAL,
+
+        invested REAL,
+
+        current_value REAL,
+
+        pnl REAL,
+
+        pnl_percent REAL,
+
+        updated_at TEXT
+
+    )
+    """)
+
+    # ==========================
+    # TRANSACTIONS
+    # ==========================
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS transactions(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        symbol TEXT,
+
+        txn_type TEXT,
+
+        qty REAL,
+
+        price REAL,
+
+        charges REAL,
+
+        txn_date TEXT
+
+    )
+    """)
+
+    # ==========================
+    # WATCHLIST
+    # ==========================
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS watchlist(
+
+        symbol TEXT PRIMARY KEY,
+
+        notes TEXT,
+
+        created_at TEXT
+
+    )
+    """)
+
     conn.commit()
     conn.close()
