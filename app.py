@@ -18,6 +18,10 @@ from core.portfolio import (
     get_stock_options
 )
 
+from core.portfolio_summary import (
+    portfolio_summary
+)
+
 # ==========================
 # INIT
 # ==========================
@@ -29,10 +33,6 @@ st.set_page_config(
     page_icon="🦅",
     layout="wide"
 )
-
-# ==========================
-# HEADER
-# ==========================
 
 st.title("🦅 Green Bull Rider V6")
 
@@ -95,14 +95,10 @@ elif menu == "Market Scanner":
 
     if st.button("🚀 Run Scan"):
 
-        with st.spinner(
-            "Scanning Stocks..."
-        ):
-
-            completed = run_scan(limit)
+        completed = run_scan(limit)
 
         st.success(
-            f"{completed} Stocks Scanned Successfully"
+            f"{completed} Stocks Scanned"
         )
 
 # ==========================
@@ -112,6 +108,36 @@ elif menu == "Market Scanner":
 elif menu == "Portfolio":
 
     st.header("💼 Portfolio")
+
+    holdings = get_portfolio()
+
+    summary = portfolio_summary(
+        holdings
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric(
+        "Invested",
+        f"₹{summary['invested']:,.0f}"
+    )
+
+    c2.metric(
+        "Current Value",
+        f"₹{summary['current']:,.0f}"
+    )
+
+    c3.metric(
+        "Profit / Loss",
+        f"₹{summary['pnl']:,.0f}"
+    )
+
+    c4.metric(
+        "Return %",
+        f"{summary['return_pct']}%"
+    )
+
+    st.divider()
 
     stock_options = get_stock_options()
 
@@ -123,36 +149,30 @@ elif menu == "Portfolio":
         ]
     )
 
-    # ==========================
     # BUY
-    # ==========================
 
     with tab1:
-
-        st.subheader("Buy Stock")
 
         selected_stock = st.selectbox(
             "Search Stock",
             stock_options,
             index=None,
-            placeholder="Type RELIANCE, TCS, INFY..."
+            placeholder="Type RELIANCE, TCS..."
         )
 
         qty = st.number_input(
             "Quantity",
             min_value=1.0,
-            value=1.0,
-            key="buy_qty"
+            value=1.0
         )
 
         price = st.number_input(
             "Buy Price",
             min_value=0.0,
-            value=0.0,
-            key="buy_price"
+            value=0.0
         )
 
-        if st.button("✅ Buy"):
+        if st.button("Buy Stock"):
 
             if selected_stock:
 
@@ -167,23 +187,17 @@ elif menu == "Portfolio":
                     price
                 )
 
-                st.success(
-                    f"{symbol} Added Successfully"
-                )
+                st.rerun()
 
-    # ==========================
     # SELL
-    # ==========================
 
     with tab2:
 
-        st.subheader("Sell Stock")
-
         selected_stock = st.selectbox(
-            "Select Stock To Sell",
+            "Select Stock",
             stock_options,
             index=None,
-            key="sell_symbol"
+            key="sell"
         )
 
         qty = st.number_input(
@@ -200,7 +214,7 @@ elif menu == "Portfolio":
             key="sell_price"
         )
 
-        if st.button("❌ Sell"):
+        if st.button("Sell Stock"):
 
             if selected_stock:
 
@@ -215,13 +229,9 @@ elif menu == "Portfolio":
                     price
                 )
 
-                st.success(
-                    f"{symbol} Sold Successfully"
-                )
+                st.rerun()
 
-    # ==========================
     # HOLDINGS
-    # ==========================
 
     with tab3:
 
@@ -229,15 +239,13 @@ elif menu == "Portfolio":
             "Current Holdings"
         )
 
-        holdings = get_portfolio()
-
         st.dataframe(
             holdings,
             use_container_width=True
         )
 
         st.subheader(
-            "Transaction History"
+            "Transactions"
         )
 
         txns = get_transactions()
@@ -276,25 +284,17 @@ elif menu == "Screener":
 
         df = near_52w_high()
 
-    st.subheader(
+    st.write(
         f"Found {len(df)} Stocks"
     )
 
-    if not df.empty:
-
-        st.dataframe(
-            df,
-            use_container_width=True
-        )
-
-    else:
-
-        st.warning(
-            "No Stocks Found"
-        )
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
 
 # ==========================
-# IPO SCANNER
+# IPO
 # ==========================
 
 elif menu == "IPO Scanner":
@@ -302,5 +302,5 @@ elif menu == "IPO Scanner":
     st.header("🆕 IPO Discovery")
 
     st.info(
-        "IPO Module Coming Soon"
+        "Coming Soon"
     )
