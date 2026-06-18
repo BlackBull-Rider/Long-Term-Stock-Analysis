@@ -141,8 +141,41 @@ elif menu == "Screener":
         "🔍 Smart Screener"
     )
 
-    st.info(
-        "Coming Soon"
+    screen_type = st.selectbox(
+
+        "Select Screener",
+
+        [
+
+            "Breakout Candidates",
+
+            "Strong Uptrend",
+
+            "Near 52W High"
+
+        ]
+
+    )
+
+    if screen_type == "Breakout Candidates":
+
+        df = breakout_candidates()
+
+    elif screen_type == "Strong Uptrend":
+
+        df = strong_uptrend()
+
+    else:
+
+        df = near_52w_high()
+
+    st.write(
+        f"Found {len(df)} Stocks"
+    )
+
+    st.dataframe(
+        df,
+        use_container_width=True
     )
 
 # ==========================
