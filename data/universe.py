@@ -4,14 +4,13 @@ import pandas as pd
 import requests
 import io
 
+
 NSE_URL = (
     "https://archives.nseindia.com/content/equities/EQUITY_L.csv"
 )
 
+
 def fetch_nse_universe():
-    """
-    Fetch all NSE EQ stocks
-    """
 
     try:
 
@@ -22,10 +21,11 @@ def fetch_nse_universe():
         response = requests.get(
             NSE_URL,
             headers=headers,
-            timeout=20
+            timeout=30
         )
 
         if response.status_code != 200:
+
             return pd.DataFrame()
 
         df = pd.read_csv(
@@ -37,12 +37,33 @@ def fetch_nse_universe():
             .str.strip()
         )
 
+        # EQ only
+
         df = df[
             df["SERIES"]
             .astype(str)
             .str.strip()
             == "EQ"
         ]
+
+        # Remove invalid symbols
+
+        df = df[
+            df["SYMBOL"]
+            .notna()
+        ]
+
+        df = df.drop_duplicates(
+            subset=["SYMBOL"]
+        )
+
+        df = df.sort_values(
+            by="SYMBOL"
+        )
+
+        df = df.reset_index(
+            drop=True
+        )
 
         return df
 
@@ -57,12 +78,8 @@ def fetch_nse_universe():
 
 if __name__ == "__main__":
 
-    universe = fetch_nse_universe()
+    df = fetch_nse_universe()
 
     print(
-        f"Loaded {len(universe)} NSE Stocks"
-    )
-
-    print(
-        universe.head()
+        f"Loaded {len(df)} Stocks"
     )
