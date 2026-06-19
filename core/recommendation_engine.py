@@ -19,7 +19,8 @@ from core.master_score import (
 def generate_recommendations(
     df,
     years,
-    expected_return
+    expected_cagr,
+    risk="Medium"
 ):
 
     if df.empty:
@@ -27,15 +28,36 @@ def generate_recommendations(
 
     params = generate_parameters(
         years,
-        expected_return
+        expected_cagr,
+        risk
     )
 
     df = df.copy()
 
+    numeric_cols = [
+
+        "roe",
+        "roce",
+        "debt_equity",
+        "sales_growth",
+        "profit_growth",
+        "institutional_holding"
+
+    ]
+
+    for col in numeric_cols:
+
+        if col in df.columns:
+
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            )
+
     df = df.fillna(0)
 
     # ==========================
-    # FUNDAMENTAL FILTER
+    # AI FILTER
     # ==========================
 
     filtered = df[
@@ -73,6 +95,7 @@ def generate_recommendations(
     ]
 
     if filtered.empty:
+
         return filtered
 
     # ==========================
@@ -104,7 +127,10 @@ def generate_recommendations(
     ):
         filtered[
             "Institutional Score"
-        ] = 0
+        ] = filtered.get(
+            "institutional_holding",
+            0
+        )
 
     if (
         "IPO Score"
@@ -131,6 +157,30 @@ def generate_recommendations(
         "Master Score"
     ].apply(
         master_grade
+    )
+
+    # ==========================
+    # EXPECTED CAGR
+    # ==========================
+
+    filtered[
+        "Expected CAGR"
+    ] = (
+
+        filtered["roe"] * 0.35
+
+        +
+
+        filtered["roce"] * 0.25
+
+        +
+
+        filtered["sales_growth"] * 0.20
+
+        +
+
+        filtered["profit_growth"] * 0.20
+
     )
 
     filtered = filtered.sort_values(
