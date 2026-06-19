@@ -52,14 +52,13 @@ st.title("🦅 Green Bull Rider V6")
 menu = st.sidebar.selectbox(
     "Navigation",
     [
-        "Dashboard",
-        "Universe Loader",
-        "Market Scanner",
-        "Portfolio",
-        "Screener",
-        "AI Recommendation",
-        "IPO Scanner"
-    ]
+    "Dashboard",
+    "Market Scanner",
+    "Portfolio",
+    "Screener",
+    "AI Recommendation",
+    "IPO Scanner"
+]
 )
 
 # ==========================
@@ -74,25 +73,6 @@ if menu == "Dashboard":
         "System Ready"
     )
 
-# ==========================
-# UNIVERSE LOADER
-# ==========================
-
-elif menu == "Universe Loader":
-
-    st.header(
-        "📥 NSE Universe Loader"
-    )
-
-    if st.button(
-        "🚀 Load NSE Universe"
-    ):
-
-        total = load_nse_universe()
-
-        st.success(
-            f"{total} Stocks Loaded"
-        )
 
 # ==========================
 # MARKET SCANNER
@@ -101,28 +81,54 @@ elif menu == "Universe Loader":
 elif menu == "Market Scanner":
 
     st.header(
-        "📡 Market Scanner"
+        "📡 Database Update Center"
     )
 
-    limit = st.slider(
-        "Stocks To Scan",
-        10,
-        500,
-        50
+    st.info(
+        "Technical + Fundamental Database Update"
     )
 
-    if st.button(
-        "🚀 Run Scan"
-    ):
+    col1, col2 = st.columns(2)
 
-        completed = run_scan(
-            limit
+    with col1:
+
+        if st.button(
+            "🚀 Full NSE Technical Scan"
+        ):
+
+            with st.spinner(
+                "Scanning All NSE Stocks..."
+            ):
+
+                completed = run_scan(
+                    limit=None
+                )
+
+            st.success(
+                f"{completed} Stocks Updated"
+            )
+
+    with col2:
+
+        from data.fundamental_sync_v2 import (
+            run_fundamental_scan
         )
 
-        st.success(
-            f"{completed} Stocks Scanned"
-        )
+        if st.button(
+            "📊 Full Fundamental Scan"
+        ):
 
+            with st.spinner(
+                "Updating Fundamental Database..."
+            ):
+
+                completed = run_fundamental_scan(
+                    limit=None
+                )
+
+            st.success(
+                f"{completed} Stocks Updated"
+            )
 # ==========================
 # PORTFOLIO
 # ==========================
