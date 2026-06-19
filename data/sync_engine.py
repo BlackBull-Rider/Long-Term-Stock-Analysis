@@ -10,7 +10,7 @@ from core.technicals import calculate_technicals
 
 
 # ==========================
-# GET ALL SYMBOLS
+# GET SYMBOLS
 # ==========================
 
 def get_symbols():
@@ -32,7 +32,7 @@ def get_symbols():
 
 
 # ==========================
-# SAVE TECHNICAL DATA
+# SAVE TECHNICALS
 # ==========================
 
 def save_technicals(
@@ -58,9 +58,15 @@ def save_technicals(
 
             rsi,
 
+            macd,
+            macd_signal,
+
+            atr,
+
             high52,
             low52,
 
+            volume,
             avg_volume,
 
             updated_at
@@ -68,24 +74,31 @@ def save_technicals(
         )
 
         VALUES(
-            ?,?,?,?,?,?,?,?,?,?
+            ?,?,?,?,?,?,?,?,?,?,?,?,?,?
         )
         """,
         (
             symbol,
 
-            data["cmp"],
+            data.get("cmp"),
 
-            data["ema20"],
-            data["ema50"],
-            data["ema200"],
+            data.get("ema20"),
+            data.get("ema50"),
+            data.get("ema200"),
 
-            data["rsi"],
+            data.get("rsi"),
 
-            data["high52"],
-            data["low52"],
+            data.get("macd"),
+            data.get("macd_signal"),
 
-            data["avg_volume"],
+            data.get("atr"),
+
+            data.get("high52"),
+            data.get("low52"),
+
+            data.get("volume"),
+
+            data.get("avg_volume"),
 
             datetime.now().isoformat()
         )
@@ -96,7 +109,7 @@ def save_technicals(
 
 
 # ==========================
-# SCAN SINGLE STOCK
+# SCAN STOCK
 # ==========================
 
 def scan_stock(symbol):
@@ -108,18 +121,27 @@ def scan_stock(symbol):
         )
 
         df = ticker.history(
-            period="1y",
+
+            period="2y",
+
             auto_adjust=True
+
         )
 
         if df.empty:
+
             return False
 
         if len(df) < 200:
+
             return False
 
         technicals = calculate_technicals(
             df
+        )
+
+        technicals["volume"] = float(
+            df["Volume"].iloc[-1]
         )
 
         save_technicals(
@@ -139,33 +161,36 @@ def scan_stock(symbol):
 
 
 # ==========================
-# FULL MARKET SCAN
+# RUN SCAN
 # ==========================
 
 def run_scan(limit=None):
 
     symbols = get_symbols()
 
-    if limit is not None:
+    if limit:
 
         symbols = symbols[:limit]
 
     total = len(symbols)
 
-    completed = 0
+    success = 0
     failed = 0
 
     print(
-        f"\nStarting Scan : {total} Stocks\n"
+        f"\nStarting Scan : {total}\n"
     )
 
-    for index, symbol in enumerate(
+    for i, symbol in enumerate(
+
         symbols,
+
         start=1
+
     ):
 
         print(
-            f"[{index}/{total}] {symbol}"
+            f"[{i}/{total}] {symbol}"
         )
 
         ok = scan_stock(
@@ -174,25 +199,25 @@ def run_scan(limit=None):
 
         if ok:
 
-            completed += 1
+            success += 1
 
         else:
 
             failed += 1
 
-    print("\n====================")
+    print("\n===================")
 
     print(
-        f"Success : {completed}"
+        f"Success : {success}"
     )
 
     print(
-        f"Failed  : {failed}"
+        f"Failed : {failed}"
     )
 
-    print("====================\n")
+    print("===================\n")
 
-    return completed
+    return success
 
 
 # ==========================
