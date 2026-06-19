@@ -31,7 +31,7 @@ def get_symbols():
 
 
 # ==========================
-# SAVE FUNDAMENTAL
+# SAVE
 # ==========================
 
 def save_fundamental(
@@ -86,30 +86,37 @@ def save_fundamental(
 
             symbol,
 
-            data["market_cap"],
-            data["pe"],
-            data["pb"],
+            data.get("market_cap"),
 
-            data["roe"],
-            data["roce"],
+            data.get("pe"),
 
-            data["debt_equity"],
+            data.get("pb"),
 
-            data["sales_growth"],
-            data["profit_growth"],
+            data.get("roe"),
 
-            data["promoter_holding"],
-            data["institutional_holding"],
+            data.get("roce"),
 
-            data["fii_holding"],
-            data["dii_holding"],
+            data.get("debt_equity"),
 
-            data["free_cash_flow"],
+            data.get("sales_growth"),
 
-            data["eps"],
-            data["book_value"],
+            data.get("profit_growth"),
 
-            data["dividend_yield"],
+            data.get("promoter_holding"),
+
+            data.get("institutional_holding"),
+
+            data.get("fii_holding"),
+
+            data.get("dii_holding"),
+
+            data.get("free_cash_flow"),
+
+            data.get("eps"),
+
+            data.get("book_value"),
+
+            data.get("dividend_yield"),
 
             datetime.now().isoformat()
 
@@ -121,7 +128,7 @@ def save_fundamental(
 
 
 # ==========================
-# FETCH FUNDAMENTAL
+# FETCH
 # ==========================
 
 def fetch_fundamental(symbol):
@@ -134,74 +141,90 @@ def fetch_fundamental(symbol):
 
         info = ticker.info
 
+        if not info:
+
+            return False
+
         roe = info.get(
             "returnOnEquity"
         )
 
-        if roe is not None:
-            roe = roe * 100
+        roe = (
+            roe * 100
+            if roe is not None
+            else 0
+        )
 
         sales_growth = info.get(
             "revenueGrowth"
         )
 
-        if sales_growth is not None:
-            sales_growth = (
-                sales_growth * 100
-            )
+        sales_growth = (
+            sales_growth * 100
+            if sales_growth is not None
+            else 0
+        )
 
         profit_growth = info.get(
             "earningsGrowth"
         )
 
-        if profit_growth is not None:
-            profit_growth = (
-                profit_growth * 100
-            )
+        profit_growth = (
+            profit_growth * 100
+            if profit_growth is not None
+            else 0
+        )
 
         institutional = info.get(
             "heldPercentInstitutions"
         )
 
-        if institutional is not None:
-            institutional = (
-                institutional * 100
-            )
+        institutional = (
+            institutional * 100
+            if institutional is not None
+            else 0
+        )
 
         dividend = info.get(
             "dividendYield"
         )
 
-        if dividend is not None:
-            dividend = dividend * 100
+        dividend = (
+            dividend * 100
+            if dividend is not None
+            else 0
+        )
 
         data = {
 
             "market_cap":
             info.get(
-                "marketCap"
+                "marketCap",
+                0
             ),
 
             "pe":
             info.get(
-                "trailingPE"
+                "trailingPE",
+                0
             ),
 
             "pb":
             info.get(
-                "priceToBook"
+                "priceToBook",
+                0
             ),
 
             "roe":
             roe,
 
-            # Yahoo ROCE দেয় না
             "roce":
             roe,
 
             "debt_equity":
             info.get(
-                "debtToEquity"
+                "debtToEquity",
+                0
             ),
 
             "sales_growth":
@@ -210,34 +233,34 @@ def fetch_fundamental(symbol):
             "profit_growth":
             profit_growth,
 
-            # Future source
             "promoter_holding":
             0,
 
             "institutional_holding":
             institutional,
 
-            # Future source
             "fii_holding":
             0,
 
-            # Future source
             "dii_holding":
             0,
 
             "free_cash_flow":
             info.get(
-                "freeCashflow"
+                "freeCashflow",
+                0
             ),
 
             "eps":
             info.get(
-                "trailingEps"
+                "trailingEps",
+                0
             ),
 
             "book_value":
             info.get(
-                "bookValue"
+                "bookValue",
+                0
             ),
 
             "dividend_yield":
@@ -262,7 +285,7 @@ def fetch_fundamental(symbol):
 
 
 # ==========================
-# FULL SCAN
+# RUN
 # ==========================
 
 def run_fundamental_scan(
@@ -271,7 +294,7 @@ def run_fundamental_scan(
 
     symbols = get_symbols()
 
-    if limit is not None:
+    if limit:
 
         symbols = symbols[:limit]
 
@@ -305,28 +328,20 @@ def run_fundamental_scan(
 
             failed += 1
 
-    print(
-        "\n========================"
-    )
+    print("\n===================")
 
     print(
         f"Success : {success}"
     )
 
     print(
-        f"Failed  : {failed}"
+        f"Failed : {failed}"
     )
 
-    print(
-        "========================\n"
-    )
+    print("===================\n")
 
     return success
 
-
-# ==========================
-# TEST
-# ==========================
 
 if __name__ == "__main__":
 
