@@ -1,14 +1,19 @@
+# app.py
+
 import streamlit as st
 
 from database.schema import create_tables
 
-from data.load_universe import load_nse_universe
-from data.sync_engine import run_scan
-
 from core.screener import (
-    breakout_candidates,
-    strong_uptrend,
-    near_52w_high
+    long_term_screener,
+    swing_screener,
+    top_compounders,
+    top_breakouts,
+    institutional_picks
+)
+
+from core.ipo_engine import (
+    get_top_ipos
 )
 
 from core.portfolio import (
@@ -31,6 +36,11 @@ from core.recommendation_engine import (
     generate_recommendations
 )
 
+from core.stock_analysis_engine import (
+    analyze_stock
+)
+
+
 # ==========================
 # INIT
 # ==========================
@@ -43,23 +53,41 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🦅 Green Bull Rider V6")
+st.title(
+    "🦅 Green Bull Rider V6"
+)
+
 
 # ==========================
-# SIDEBAR
+# MENU
 # ==========================
 
 menu = st.sidebar.selectbox(
+
     "Navigation",
+
     [
-    "Dashboard",
-    "Market Scanner",
-    "Portfolio",
-    "Screener",
-    "AI Recommendation",
-    "IPO Scanner"
-]
+
+        "Dashboard",
+
+        "Long Term Screener",
+
+        "Swing Screener",
+
+        "IPO Hunter",
+
+        "Portfolio",
+
+        "Portfolio Analysis",
+
+        "AI Recommendation",
+
+        "Stock Analysis"
+
+    ]
+
 )
+
 
 # ==========================
 # DASHBOARD
@@ -67,75 +95,139 @@ menu = st.sidebar.selectbox(
 
 if menu == "Dashboard":
 
-    st.header("📊 Dashboard")
-
-    st.success(
-        "System Ready"
-    )
-
-
-# ==========================
-# MARKET SCANNER
-# ==========================
-
-elif menu == "Market Scanner":
-
     st.header(
-        "📡 Database Update Center"
+        "📊 Dashboard"
     )
 
-    st.info(
-        "Technical + Fundamental Database Update"
-    )
-
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
 
-        if st.button(
-            "🚀 Full NSE Technical Scan"
-        ):
-
-            with st.spinner(
-                "Scanning All NSE Stocks..."
-            ):
-
-                completed = run_scan(
-                    limit=None
-                )
-
-            st.success(
-                f"{completed} Stocks Updated"
+        st.metric(
+            "Top Compounders",
+            len(
+                top_compounders()
             )
+        )
 
     with col2:
 
-        from data.fundamental_sync_v2 import (
-            run_fundamental_scan
+        st.metric(
+            "Top Breakouts",
+            len(
+                top_breakouts()
+            )
         )
 
-        if st.button(
-            "📊 Full Fundamental Scan"
-        ):
+    with col3:
 
-            with st.spinner(
-                "Updating Fundamental Database..."
-            ):
-
-                completed = run_fundamental_scan(
-                    limit=None
-                )
-
-            st.success(
-                f"{completed} Stocks Updated"
+        st.metric(
+            "Institutional Picks",
+            len(
+                institutional_picks()
             )
+        )
+
+    st.divider()
+
+    st.subheader(
+        "🏆 Top Compounders"
+    )
+
+    st.dataframe(
+        top_compounders().head(20),
+        use_container_width=True
+    )
+
+    st.subheader(
+        "🚀 Top Breakouts"
+    )
+
+    st.dataframe(
+        top_breakouts().head(20),
+        use_container_width=True
+    )
+
+
+# ==========================
+# LONG TERM
+# ==========================
+
+elif menu == "Long Term Screener":
+
+    st.header(
+        "🏆 Long Term Screener"
+    )
+
+    df = long_term_screener()
+
+    st.write(
+        f"Found {len(df)} Stocks"
+    )
+
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
+
+
+# ==========================
+# SWING
+# ==========================
+
+elif menu == "Swing Screener":
+
+    st.header(
+        "⚡ Swing Screener"
+    )
+
+    df = swing_screener()
+
+    st.write(
+        f"Found {len(df)} Stocks"
+    )
+
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
+
+
+# ==========================
+# IPO
+# ==========================
+
+elif menu == "IPO Hunter":
+
+    st.header(
+        "🚀 IPO Hunter"
+    )
+
+    df = get_top_ipos()
+
+    if not df.empty:
+
+        st.dataframe(
+            df,
+            use_container_width=True
+        )
+
+    else:
+
+        st.warning(
+            "No IPO Data Available"
+        )
+
+
 # ==========================
 # PORTFOLIO
 # ==========================
 
 elif menu == "Portfolio":
 
-    st.header("💼 Portfolio")
+    st.header(
+        "💼 Portfolio"
+    )
 
     holdings = get_portfolio()
 
@@ -182,8 +274,7 @@ elif menu == "Portfolio":
         selected_stock = st.selectbox(
             "Search Stock",
             stock_options,
-            index=None,
-            placeholder="Type RELIANCE..."
+            index=None
         )
 
         qty = st.number_input(
@@ -261,17 +352,9 @@ elif menu == "Portfolio":
 
     with tab3:
 
-        st.subheader(
-            "Current Holdings"
-        )
-
         st.dataframe(
             holdings,
             use_container_width=True
-        )
-
-        st.subheader(
-            "Transactions"
         )
 
         st.dataframe(
@@ -279,45 +362,21 @@ elif menu == "Portfolio":
             use_container_width=True
         )
 
+
 # ==========================
-# SCREENER
+# PORTFOLIO ANALYSIS
 # ==========================
 
-elif menu == "Screener":
+elif menu == "Portfolio Analysis":
 
     st.header(
-        "🔍 Smart Screener"
+        "📈 Portfolio Analysis"
     )
 
-    screen_type = st.selectbox(
-        "Select Screener",
-        [
-            "Breakout Candidates",
-            "Strong Uptrend",
-            "Near 52W High"
-        ]
+    st.info(
+        "Institutional Portfolio Analytics Coming Soon"
     )
 
-    if screen_type == "Breakout Candidates":
-
-        df = breakout_candidates()
-
-    elif screen_type == "Strong Uptrend":
-
-        df = strong_uptrend()
-
-    else:
-
-        df = near_52w_high()
-
-    st.write(
-        f"Found {len(df)} Stocks"
-    )
-
-    st.dataframe(
-        df,
-        use_container_width=True
-    )
 
 # ==========================
 # AI RECOMMENDATION
@@ -326,98 +385,102 @@ elif menu == "Screener":
 elif menu == "AI Recommendation":
 
     st.header(
-        "🤖 AI Recommendation Engine"
+        "🤖 AI Recommendation"
     )
 
     years = st.slider(
-        "Investment Horizon (Years)",
+        "Investment Horizon",
         1,
-        50,
-        15
+        30,
+        10
     )
 
     expected_return = st.slider(
-        "Expected Return (%)",
+        "Expected CAGR (%)",
         10,
-        200,
-        25
+        100,
+        20
     )
 
     if st.button(
         "Generate Recommendations"
     ):
 
-        with st.spinner(
-            "Analyzing Database..."
-        ):
+        df = load_recommendation_data()
 
-            df = load_recommendation_data()
-
-            result = generate_recommendations(
-                df,
-                years,
-                expected_return
-            )
-
-        st.success(
-            f"{len(result)} Stocks Found"
+        result = generate_recommendations(
+            df,
+            years,
+            expected_return
         )
 
-        if not result.empty:
+        st.dataframe(
+            result,
+            use_container_width=True
+        )
 
-            show_cols = [
-
-                "symbol",
-
-                "Master Score",
-
-                "Recommendation",
-
-                "Compounder Score",
-
-                "roe",
-
-                "roce",
-
-                "sales_growth",
-
-                "profit_growth",
-
-                "debt_equity"
-
-            ]
-
-            available = [
-
-                c
-
-                for c in show_cols
-
-                if c in result.columns
-
-            ]
-
-            st.dataframe(
-                result[available],
-                use_container_width=True
-            )
-
-        else:
-
-            st.warning(
-                "No Matching Stocks Found"
-            )
 
 # ==========================
-# IPO
+# STOCK ANALYSIS
 # ==========================
 
-elif menu == "IPO Scanner":
+elif menu == "Stock Analysis":
 
     st.header(
-        "🆕 IPO Discovery"
+        "📈 Stock Analysis"
     )
 
-    st.info(
-        "IPO Engine Coming Soon"
+    stock_options = get_stock_options()
+
+    selected = st.selectbox(
+        "Select Stock",
+        stock_options,
+        index=None
     )
+
+    if selected:
+
+        symbol = (
+            selected
+            .split(" - ")[0]
+        )
+
+        result = analyze_stock(
+            symbol
+        )
+
+        if result:
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "CMP",
+                result["cmp"]
+            )
+
+            c2.metric(
+                "Target",
+                result["target"]
+            )
+
+            c3.metric(
+                "Stoploss",
+                result["stoploss"]
+            )
+
+            st.success(
+                f"Action : {result['action']}"
+            )
+
+            st.write(
+                f"Overall Score : {result['overall']}"
+            )
+
+            st.write(
+                f"Grade : {result['grade']}"
+            )
+
+            st.dataframe(
+                [result],
+                use_container_width=True
+            )
