@@ -2,10 +2,15 @@
 
 import pandas as pd
 import yfinance as yf
+
 from datetime import datetime
 
 from database.db import get_connection
 
+
+# ==========================
+# GET SYMBOLS
+# ==========================
 
 def get_symbols():
 
@@ -15,6 +20,7 @@ def get_symbols():
         """
         SELECT symbol
         FROM stock_master
+        ORDER BY symbol
         """,
         conn
     )
@@ -24,9 +30,17 @@ def get_symbols():
     return df["symbol"].tolist()
 
 
-def save_fundamental(symbol, data):
+# ==========================
+# SAVE FUNDAMENTAL
+# ==========================
+
+def save_fundamental(
+    symbol,
+    data
+):
 
     conn = get_connection()
+
     cur = conn.cursor()
 
     cur.execute(
@@ -69,6 +83,7 @@ def save_fundamental(symbol, data):
         )
         """,
         (
+
             symbol,
 
             data["market_cap"],
@@ -97,12 +112,17 @@ def save_fundamental(symbol, data):
             data["dividend_yield"],
 
             datetime.now().isoformat()
+
         )
     )
 
     conn.commit()
     conn.close()
 
+
+# ==========================
+# FETCH FUNDAMENTAL
+# ==========================
 
 def fetch_fundamental(symbol):
 
@@ -126,14 +146,18 @@ def fetch_fundamental(symbol):
         )
 
         if sales_growth is not None:
-            sales_growth = sales_growth * 100
+            sales_growth = (
+                sales_growth * 100
+            )
 
         profit_growth = info.get(
             "earningsGrowth"
         )
 
         if profit_growth is not None:
-            profit_growth = profit_growth * 100
+            profit_growth = (
+                profit_growth * 100
+            )
 
         institutional = info.get(
             "heldPercentInstitutions"
@@ -143,6 +167,13 @@ def fetch_fundamental(symbol):
             institutional = (
                 institutional * 100
             )
+
+        dividend = info.get(
+            "dividendYield"
+        )
+
+        if dividend is not None:
+            dividend = dividend * 100
 
         data = {
 
@@ -164,6 +195,7 @@ def fetch_fundamental(symbol):
             "roe":
             roe,
 
+            # Yahoo ROCE দেয় না
             "roce":
             roe,
 
@@ -178,15 +210,18 @@ def fetch_fundamental(symbol):
             "profit_growth":
             profit_growth,
 
+            # Future source
             "promoter_holding":
             0,
 
             "institutional_holding":
             institutional,
 
+            # Future source
             "fii_holding":
             0,
 
+            # Future source
             "dii_holding":
             0,
 
@@ -206,9 +241,7 @@ def fetch_fundamental(symbol):
             ),
 
             "dividend_yield":
-            info.get(
-                "dividendYield"
-            )
+            dividend
 
         }
 
@@ -222,32 +255,42 @@ def fetch_fundamental(symbol):
     except Exception as e:
 
         print(
-            f"Error {symbol}: {e}"
+            f"FAILED : {symbol} | {e}"
         )
 
         return False
 
 
+# ==========================
+# FULL SCAN
+# ==========================
+
 def run_fundamental_scan(
-    limit=100
+    limit=None
 ):
 
     symbols = get_symbols()
 
-    success = 0
+    if limit is not None:
 
-    total = min(
-        len(symbols),
-        limit
+        symbols = symbols[:limit]
+
+    total = len(symbols)
+
+    success = 0
+    failed = 0
+
+    print(
+        f"\nScanning {total} Stocks...\n"
     )
 
-    for i, symbol in enumerate(
-        symbols[:limit],
+    for index, symbol in enumerate(
+        symbols,
         start=1
     ):
 
         print(
-            f"[{i}/{total}] {symbol}"
+            f"[{index}/{total}] {symbol}"
         )
 
         ok = fetch_fundamental(
@@ -255,17 +298,36 @@ def run_fundamental_scan(
         )
 
         if ok:
+
             success += 1
+
+        else:
+
+            failed += 1
+
+    print(
+        "\n========================"
+    )
+
+    print(
+        f"Success : {success}"
+    )
+
+    print(
+        f"Failed  : {failed}"
+    )
+
+    print(
+        "========================\n"
+    )
 
     return success
 
 
+# ==========================
+# TEST
+# ==========================
+
 if __name__ == "__main__":
 
-    result = run_fundamental_scan(
-        limit=100
-    )
-
-    print(
-        f"Updated {result} stocks"
-    )
+    run_fundamental_scan()
