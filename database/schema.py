@@ -1,3 +1,5 @@
+# database/schema.py
+
 from database.db import get_connection
 
 
@@ -75,9 +77,17 @@ def create_tables():
 
         rsi REAL,
 
+        macd REAL,
+
+        macd_signal REAL,
+
+        atr REAL,
+
         high52 REAL,
 
         low52 REAL,
+
+        volume REAL,
 
         avg_volume REAL,
 
@@ -152,6 +162,24 @@ def create_tables():
         current_price REAL,
 
         gain_percent REAL,
+
+        sales_growth REAL,
+
+        profit_growth REAL,
+
+        institutional_holding REAL,
+
+        volume_ratio REAL,
+
+        cmp REAL,
+
+        ema20 REAL,
+
+        ema50 REAL,
+
+        ema200 REAL,
+
+        rsi REAL,
 
         updated_at TEXT
 
