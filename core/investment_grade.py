@@ -1,15 +1,79 @@
+# core/investment_grade.py
+
+
 def investment_grade(score):
 
-    if score >= 85:
-        return "A+ Compounder"
+    # ==========================
+    # ELITE COMPOUNDER
+    # ==========================
 
-    if score >= 70:
-        return "A Grade"
+    if score >= 95:
 
-    if score >= 55:
-        return "B Grade"
+        return "STRONG BUY"
 
-    if score >= 40:
-        return "C Grade"
+    # ==========================
+    # HIGH QUALITY
+    # ==========================
 
-    return "Avoid"
+    elif score >= 80:
+
+        return "BUY"
+
+    # ==========================
+    # GOOD BUSINESS
+    # ==========================
+
+    elif score >= 65:
+
+        return "ACCUMULATE"
+
+    # ==========================
+    # AVERAGE
+    # ==========================
+
+    elif score >= 50:
+
+        return "HOLD"
+
+    # ==========================
+    # WEAK
+    # ==========================
+
+    elif score >= 35:
+
+        return "REDUCE"
+
+    # ==========================
+    # POOR
+    # ==========================
+
+    else:
+
+        return "AVOID"
+
+
+def investment_label(score):
+
+    if score >= 95:
+
+        return "🟢 Elite Compounder"
+
+    elif score >= 80:
+
+        return "🟢 High Quality"
+
+    elif score >= 65:
+
+        return "🟡 Growth Candidate"
+
+    elif score >= 50:
+
+        return "🟠 Average"
+
+    elif score >= 35:
+
+        return "🔴 Weak"
+
+    else:
+
+        return "⛔ Avoid"
