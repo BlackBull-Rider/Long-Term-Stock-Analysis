@@ -3,16 +3,9 @@
 import pandas as pd
 
 
-def resistance_breakout(
-    cmp_price,
-    resistance
-):
-
-    if resistance <= 0:
-        return False
-
-    return cmp_price > resistance
-
+# ==========================
+# 52 WEEK BREAKOUT
+# ==========================
 
 def fifty_two_week_breakout(
     cmp_price,
@@ -20,10 +13,17 @@ def fifty_two_week_breakout(
 ):
 
     if high52 <= 0:
+
         return False
 
-    return cmp_price >= high52
+    return cmp_price >= (
+        high52 * 0.98
+    )
 
+
+# ==========================
+# VOLUME BREAKOUT
+# ==========================
 
 def volume_breakout(
     volume,
@@ -31,12 +31,17 @@ def volume_breakout(
 ):
 
     if avg_volume <= 0:
+
         return False
 
     return volume >= (
         avg_volume * 2
     )
 
+
+# ==========================
+# EMA TREND
+# ==========================
 
 def ema_breakout(
     cmp_price,
@@ -60,6 +65,31 @@ def ema_breakout(
     )
 
 
+# ==========================
+# RSI SCORE
+# ==========================
+
+def rsi_score(rsi):
+
+    if rsi >= 70:
+
+        return 20
+
+    elif rsi >= 60:
+
+        return 15
+
+    elif rsi >= 55:
+
+        return 10
+
+    return 0
+
+
+# ==========================
+# MOMENTUM SCORE
+# ==========================
+
 def momentum_score(row):
 
     score = 0
@@ -71,7 +101,8 @@ def momentum_score(row):
         "ema20",
         0
     ):
-        score += 20
+
+        score += 15
 
     if row.get(
         "ema20",
@@ -80,7 +111,8 @@ def momentum_score(row):
         "ema50",
         0
     ):
-        score += 20
+
+        score += 15
 
     if row.get(
         "ema50",
@@ -89,49 +121,71 @@ def momentum_score(row):
         "ema200",
         0
     ):
-        score += 20
 
-    if row.get(
-        "rsi",
-        0
-    ) >= 60:
-        score += 20
+        score += 15
 
-    if row.get(
-        "avg_volume",
-        0
-    ) > 0:
-        score += 20
+    score += rsi_score(
+        row.get(
+            "rsi",
+            0
+        )
+    )
 
     return score
 
+
+# ==========================
+# BREAKOUT SCORE
+# ==========================
 
 def breakout_score(row):
 
     score = 0
 
     if fifty_two_week_breakout(
-        row.get("cmp", 0),
-        row.get("high52", 0)
+
+        row.get(
+            "cmp",
+            0
+        ),
+
+        row.get(
+            "high52",
+            0
+        )
+
     ):
+
         score += 30
 
     if ema_breakout(
-        row.get("cmp", 0),
-        row.get("ema20", 0),
-        row.get("ema50", 0),
-        row.get("ema200", 0)
+
+        row.get(
+            "cmp",
+            0
+        ),
+
+        row.get(
+            "ema20",
+            0
+        ),
+
+        row.get(
+            "ema50",
+            0
+        ),
+
+        row.get(
+            "ema200",
+            0
+        )
+
     ):
+
         score += 25
 
-    if row.get(
-        "rsi",
-        0
-    ) >= 60:
-        score += 15
-
-    score += (
-        momentum_score(row) / 2
+    score += momentum_score(
+        row
     )
 
     return round(
@@ -140,26 +194,41 @@ def breakout_score(row):
     )
 
 
+# ==========================
+# BREAKOUT GRADE
+# ==========================
+
 def breakout_grade(score):
 
-    if score >= 80:
-        return "🚀 Explosive"
+    if score >= 85:
 
-    if score >= 65:
+        return "🚀 Explosive Breakout"
+
+    elif score >= 70:
+
         return "🔥 Strong Breakout"
 
-    if score >= 50:
-        return "🟢 Breakout Candidate"
+    elif score >= 55:
 
-    if score >= 35:
+        return "🟢 Swing Candidate"
+
+    elif score >= 40:
+
         return "🟡 Watchlist"
 
-    return "⚪ Normal"
+    else:
 
+        return "⚪ Normal"
+
+
+# ==========================
+# ENRICH DATAFRAME
+# ==========================
 
 def enrich_breakout(df):
 
     if df.empty:
+
         return df
 
     df = df.copy()
