@@ -282,6 +282,13 @@ def calculate_technicals(df):
         2
     )
 
+    result["volume"] = round(
+        float(
+            df["Volume"].iloc[-1]
+        ),
+        0
+    )
+
     result["avg_volume"] = round(
         float(
             df["Volume"]
