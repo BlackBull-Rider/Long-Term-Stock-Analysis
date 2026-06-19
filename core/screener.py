@@ -17,10 +17,6 @@ from core.institutional_tracker import (
 )
 
 
-# ==========================
-# LOAD DATA
-# ==========================
-
 def get_all_stocks():
 
     conn = get_connection()
@@ -65,7 +61,6 @@ def get_all_stocks():
     conn.close()
 
     if df.empty:
-
         return df
 
     df = df.fillna(0)
@@ -82,28 +77,29 @@ def long_term_screener():
     df = get_all_stocks()
 
     if df.empty:
-
         return df
 
     filtered = df[
 
-        (df["roe"] >= 15)
+        (df["roe"] >= 10)
 
         &
 
-        (df["roce"] >= 15)
+        (df["roce"] >= 10)
 
         &
 
-        (df["debt_equity"] <= 1)
+        (df["debt_equity"] <= 2)
 
         &
 
-        (df["sales_growth"] >= 10)
+        (
+            (df["sales_growth"] >= 5)
 
-        &
+            |
 
-        (df["profit_growth"] >= 10)
+            (df["profit_growth"] >= 5)
+        )
 
     ]
 
@@ -129,7 +125,6 @@ def swing_screener():
     df = get_all_stocks()
 
     if df.empty:
-
         return df
 
     filtered = df[
@@ -142,11 +137,7 @@ def swing_screener():
 
         &
 
-        (df["ema50"] > df["ema200"])
-
-        &
-
-        (df["rsi"] >= 55)
+        (df["rsi"] >= 50)
 
     ]
 
@@ -164,7 +155,7 @@ def swing_screener():
 
 
 # ==========================
-# 52W HIGH
+# 52 WEEK HIGH
 # ==========================
 
 def near_52w_high():
@@ -172,7 +163,6 @@ def near_52w_high():
     df = get_all_stocks()
 
     if df.empty:
-
         return df
 
     filtered = df[
@@ -181,7 +171,7 @@ def near_52w_high():
 
         >=
 
-        df["high52"] * 0.95
+        df["high52"] * 0.90
 
     ]
 
@@ -200,10 +190,9 @@ def top_compounders():
     df = long_term_screener()
 
     if df.empty:
-
         return df
 
-    return df.head(50)
+    return df.head(100)
 
 
 # ==========================
@@ -215,10 +204,9 @@ def top_breakouts():
     df = swing_screener()
 
     if df.empty:
-
         return df
 
-    return df.head(50)
+    return df.head(100)
 
 
 # ==========================
@@ -230,7 +218,6 @@ def institutional_picks():
     df = get_all_stocks()
 
     if df.empty:
-
         return df
 
     df = df.copy()
@@ -240,7 +227,9 @@ def institutional_picks():
         axis=1
     )
 
-    return df.sort_values(
+    df = df.sort_values(
         by="Institutional Score",
         ascending=False
-    ).head(50)
+    )
+
+    return df.head(100)
