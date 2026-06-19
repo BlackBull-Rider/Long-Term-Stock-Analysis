@@ -5,10 +5,6 @@ import pandas as pd
 from database.db import get_connection
 
 
-# ==========================
-# LOAD IPO DATA
-# ==========================
-
 def get_all_ipos():
 
     conn = get_connection()
@@ -26,106 +22,81 @@ def get_all_ipos():
     return df
 
 
-# ==========================
-# LISTING PERFORMANCE
-# ==========================
-
-def listing_score(gain_percent):
-
-    if gain_percent >= 300:
-        return 25
-
-    elif gain_percent >= 200:
-        return 20
-
-    elif gain_percent >= 100:
-        return 15
-
-    elif gain_percent >= 50:
-        return 10
-
-    return 0
-
-
-# ==========================
-# REVENUE
-# ==========================
-
-def revenue_score(growth):
-
-    if growth >= 40:
-        return 20
-
-    elif growth >= 25:
-        return 15
-
-    elif growth >= 15:
-        return 10
-
-    return 0
-
-
-# ==========================
-# PROFIT
-# ==========================
-
-def profit_score(growth):
-
-    if growth >= 40:
-        return 20
-
-    elif growth >= 25:
-        return 15
-
-    elif growth >= 15:
-        return 10
-
-    return 0
-
-
-# ==========================
-# INSTITUTIONAL
-# ==========================
-
-def institutional_score(inst):
-
-    if inst >= 40:
-        return 15
-
-    elif inst >= 25:
-        return 10
-
-    elif inst >= 10:
-        return 5
-
-    return 0
-
-
-# ==========================
-# VOLUME
-# ==========================
-
-def volume_score(volume_ratio):
-
-    if volume_ratio >= 5:
-        return 10
-
-    elif volume_ratio >= 3:
-        return 7
-
-    elif volume_ratio >= 2:
-        return 5
-
-    return 0
-
-
-# ==========================
-# TECHNICAL
-# ==========================
-
-def technical_score(row):
+def ipo_quality_score(row):
 
     score = 0
+
+    gain = row.get(
+        "gain_percent",
+        0
+    )
+
+    if gain >= 200:
+
+        score += 25
+
+    elif gain >= 100:
+
+        score += 20
+
+    elif gain >= 50:
+
+        score += 15
+
+    elif gain >= 20:
+
+        score += 10
+
+    institutional = row.get(
+        "institutional_holding",
+        0
+    )
+
+    if institutional >= 30:
+
+        score += 15
+
+    elif institutional >= 20:
+
+        score += 10
+
+    elif institutional >= 10:
+
+        score += 5
+
+    sales = row.get(
+        "sales_growth",
+        0
+    )
+
+    if sales >= 30:
+
+        score += 15
+
+    elif sales >= 20:
+
+        score += 10
+
+    elif sales >= 10:
+
+        score += 5
+
+    profit = row.get(
+        "profit_growth",
+        0
+    )
+
+    if profit >= 30:
+
+        score += 15
+
+    elif profit >= 20:
+
+        score += 10
+
+    elif profit >= 10:
+
+        score += 5
 
     cmp_price = row.get(
         "cmp",
@@ -147,11 +118,6 @@ def technical_score(row):
         0
     )
 
-    rsi = row.get(
-        "rsi",
-        0
-    )
-
     if (
 
         cmp_price > ema20
@@ -166,7 +132,12 @@ def technical_score(row):
 
     ):
 
-        score += 10
+        score += 20
+
+    rsi = row.get(
+        "rsi",
+        0
+    )
 
     if 55 <= rsi <= 75:
 
@@ -175,97 +146,36 @@ def technical_score(row):
     return score
 
 
-# ==========================
-# IPO QUALITY SCORE
-# ==========================
-
-def ipo_quality_score(row):
-
-    score = 0
-
-    score += listing_score(
-        row.get(
-            "gain_percent",
-            0
-        )
-    )
-
-    score += revenue_score(
-        row.get(
-            "sales_growth",
-            0
-        )
-    )
-
-    score += profit_score(
-        row.get(
-            "profit_growth",
-            0
-        )
-    )
-
-    score += institutional_score(
-        row.get(
-            "institutional_holding",
-            0
-        )
-    )
-
-    score += volume_score(
-        row.get(
-            "volume_ratio",
-            0
-        )
-    )
-
-    score += technical_score(
-        row
-    )
-
-    return round(
-        score,
-        2
-    )
-
-
-# ==========================
-# IPO GRADE
-# ==========================
-
 def ipo_grade(score):
 
-    if score >= 85:
+    if score >= 80:
 
-        return "🚀 Multibagger Candidate"
+        return "🚀 Multibagger IPO"
 
-    elif score >= 70:
+    if score >= 65:
 
-        return "🔥 High Potential"
+        return "🔥 Strong IPO"
 
-    elif score >= 55:
+    if score >= 50:
 
-        return "🟢 Strong IPO"
+        return "🟢 Good IPO"
 
-    elif score >= 40:
+    if score >= 35:
 
         return "🟡 Watchlist"
 
-    else:
-
-        return "🔴 Avoid"
+    return "⚪ Weak"
 
 
-# ==========================
-# RANK IPOs
-# ==========================
+def get_top_ipos():
 
-def rank_ipos(df):
+    df = get_all_ipos()
 
     if df.empty:
 
         return df
 
-    df = df.copy()
+    df = df.fillna(0)
 
     df["IPO Score"] = df.apply(
         ipo_quality_score,
@@ -284,18 +194,3 @@ def rank_ipos(df):
     )
 
     return df
-
-
-# ==========================
-# TOP IPOs
-# ==========================
-
-def get_top_ipos():
-
-    df = get_all_ipos()
-
-    if df.empty:
-
-        return df
-
-    return rank_ipos(df).head(50)
