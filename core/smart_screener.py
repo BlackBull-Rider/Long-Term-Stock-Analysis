@@ -2,82 +2,64 @@
 
 import pandas as pd
 
-from database.db import get_connection
-from core.auto_parameters import generate_parameters
+from core.auto_parameters import (
+    generate_parameters
+)
+
+from core.compounder_engine import (
+    calculate_compounder_score
+)
 
 
-def load_data():
-
-    conn = get_connection()
-
-    query = """
-    SELECT
-
-        t.symbol,
-
-        t.cmp,
-
-        t.rsi,
-
-        t.ema20,
-
-        t.ema50,
-
-        t.ema200,
-
-        f.market_cap,
-
-        f.pe,
-
-        f.pb,
-
-        f.roe,
-
-        f.roce,
-
-        f.debt_equity,
-
-        f.sales_growth,
-
-        f.profit_growth,
-
-        f.promoter_holding,
-
-        f.institutional_holding
-
-    FROM technical_data t
-
-    LEFT JOIN fundamental_data f
-
-    ON t.symbol = f.symbol
-    """
-
-    df = pd.read_sql_query(
-        query,
-        conn
-    )
-
-    conn.close()
-
-    return df
-
-
-def smart_screen(
+def run_screener(
+    df,
     years,
-    expected_return
+    expected_cagr,
+    risk="Medium"
 ):
-
-    params = generate_parameters(
-        years,
-        expected_return
-    )
-
-    df = load_data()
 
     if df.empty:
         return df
 
+    params = generate_parameters(
+        years,
+        expected_cagr,
+        risk
+    )
+
+    df = df.copy()
+
+    numeric_cols = [
+
+        "roe",
+        "roce",
+
+        "debt_equity",
+
+        "sales_growth",
+        "profit_growth",
+
+        "pe",
+        "pb",
+
+        "institutional_holding"
+
+    ]
+
+    for col in numeric_cols:
+
+        if col in df.columns:
+
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            )
+
     df = df.fillna(0)
+
+    # ==========================
+    # FUNDAMENTAL FILTER
+    # ==========================
 
     filtered = df[
 
@@ -89,7 +71,11 @@ def smart_screen(
 
         &
 
-        (df["debt_equity"] <= params["debt"])
+        (
+            df["debt_equity"]
+            <=
+            params["debt"]
+        )
 
         &
 
@@ -107,40 +93,100 @@ def smart_screen(
             params["profit_growth"]
         )
 
-        &
-
-        (
-            df["promoter_holding"]
-            >=
-            params["promoter"]
-        )
-
     ]
 
     if filtered.empty:
+
         return filtered
 
-    filtered["Score"] = (
+    # ==========================
+    # COMPOUNDER SCORE
+    # ==========================
 
-        filtered["roe"]
+    filtered[
+        "Compounder Score"
+    ] = filtered.apply(
+        calculate_compounder_score,
+        axis=1
+    )
+
+    # ==========================
+    # QUALITY SCORE
+    # ==========================
+
+    filtered[
+        "Quality Score"
+    ] = (
+
+        filtered["roe"] * 0.25
 
         +
 
-        filtered["roce"]
+        filtered["roce"] * 0.25
 
         +
 
-        filtered["sales_growth"]
+        filtered["sales_growth"] * 0.20
 
         +
 
-        filtered["profit_growth"]
+        filtered["profit_growth"] * 0.20
+
+        +
+
+        filtered.get(
+            "institutional_holding",
+            0
+        ) * 0.10
 
     )
+
+    # ==========================
+    # EXPECTED CAGR
+    # ==========================
+
+    filtered[
+        "Expected CAGR"
+    ] = (
+
+        filtered["roe"] * 0.35
+
+        +
+
+        filtered["roce"] * 0.25
+
+        +
+
+        filtered["sales_growth"] * 0.20
+
+        +
+
+        filtered["profit_growth"] * 0.20
+
+    )
+
+    # ==========================
+    # FINAL SCORE
+    # ==========================
+
+    filtered[
+        "Final Score"
+    ] = (
+
+        filtered["Compounder Score"]
+
+        +
+
+        filtered["Quality Score"]
+
+    ) / 2
 
     filtered = filtered.sort_values(
-        by="Score",
+
+        by="Final Score",
+
         ascending=False
+
     )
 
-    return filtered
+    return filtered.head(100)
