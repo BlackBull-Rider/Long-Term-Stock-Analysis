@@ -2,84 +2,142 @@
 
 def generate_parameters(
     years,
-    expected_return
+    expected_cagr,
+    risk="Medium"
 ):
 
     result = {}
 
     # ==========================
-    # ULTRA CONSERVATIVE
+    # LOW RISK
     # ==========================
 
-    if years >= 20 and expected_return <= 15:
+    if risk == "Low":
 
-        result["roe"] = 15
-        result["roce"] = 15
-        result["debt"] = 1.0
-        result["sales_growth"] = 8
-        result["profit_growth"] = 8
-        result["promoter"] = 40
-        result["institutional"] = False
-        result["margin_safety"] = 10
+        result["roe"] = max(
+            15,
+            expected_cagr
+        )
 
-    # ==========================
-    # COMPOUNDER
-    # ==========================
+        result["roce"] = max(
+            15,
+            expected_cagr
+        )
 
-    elif years >= 10 and expected_return <= 25:
-
-        result["roe"] = 18
-        result["roce"] = 18
         result["debt"] = 0.5
-        result["sales_growth"] = 12
-        result["profit_growth"] = 12
+
+        result["sales_growth"] = 10
+
+        result["profit_growth"] = 10
+
         result["promoter"] = 50
-        result["institutional"] = True
-        result["margin_safety"] = 15
+
+        result["institutional"] = 10
+
+        result["pe"] = 35
 
     # ==========================
-    # HIGH GROWTH
+    # MEDIUM RISK
     # ==========================
 
-    elif years >= 10 and expected_return <= 40:
+    elif risk == "Medium":
 
-        result["roe"] = 22
-        result["roce"] = 20
-        result["debt"] = 0.3
-        result["sales_growth"] = 18
-        result["profit_growth"] = 18
-        result["promoter"] = 55
-        result["institutional"] = True
-        result["margin_safety"] = 20
+        result["roe"] = max(
+            18,
+            expected_cagr
+        )
 
-    # ==========================
-    # MULTIBAGGER
-    # ==========================
+        result["roce"] = max(
+            18,
+            expected_cagr
+        )
 
-    elif expected_return <= 75:
+        result["debt"] = 0.75
 
-        result["roe"] = 25
-        result["roce"] = 25
-        result["debt"] = 0.2
-        result["sales_growth"] = 25
-        result["profit_growth"] = 25
-        result["promoter"] = 60
-        result["institutional"] = True
-        result["margin_safety"] = 25
+        result["sales_growth"] = 12
+
+        result["profit_growth"] = 12
+
+        result["promoter"] = 50
+
+        result["institutional"] = 8
+
+        result["pe"] = 50
 
     # ==========================
-    # SUPER COMPOUNDER
+    # HIGH RISK
+    # ==========================
+
+    elif risk == "High":
+
+        result["roe"] = max(
+            20,
+            expected_cagr
+        )
+
+        result["roce"] = max(
+            20,
+            expected_cagr
+        )
+
+        result["debt"] = 1.0
+
+        result["sales_growth"] = 15
+
+        result["profit_growth"] = 15
+
+        result["promoter"] = 45
+
+        result["institutional"] = 5
+
+        result["pe"] = 80
+
+    # ==========================
+    # AGGRESSIVE
     # ==========================
 
     else:
 
-        result["roe"] = 30
-        result["roce"] = 30
-        result["debt"] = 0.0
-        result["sales_growth"] = 35
-        result["profit_growth"] = 35
-        result["promoter"] = 65
-        result["institutional"] = True
-        result["margin_safety"] = 30
+        result["roe"] = max(
+            25,
+            expected_cagr
+        )
+
+        result["roce"] = max(
+            25,
+            expected_cagr
+        )
+
+        result["debt"] = 2.0
+
+        result["sales_growth"] = 20
+
+        result["profit_growth"] = 20
+
+        result["promoter"] = 40
+
+        result["institutional"] = 0
+
+        result["pe"] = 150
+
+    # ==========================
+    # LONG TERM BONUS
+    # ==========================
+
+    if years >= 20:
+
+        result["promoter"] += 5
+
+        result["sales_growth"] += 2
+
+        result["profit_growth"] += 2
+
+    if years >= 30:
+
+        result["promoter"] += 5
+
+        result["sales_growth"] += 3
+
+        result["profit_growth"] += 3
 
     return result
